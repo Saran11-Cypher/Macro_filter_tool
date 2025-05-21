@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Excel Editor</title>
+    
+    <!-- Handsontable CSS & JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@12.1.0/dist/handsontable.full.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@12.1.0/dist/handsontable.full.min.js"></script>
+    
+    <!-- Additional libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/SheetJS/0.18.10/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #0078d4;
+            --secondary-color: #f3f3f3;
+            --border-color: #e0e0e0;
+            --toolbar-bg: #f8f9fa;
+            --hover-color: #e6f2ff;
+            --active-tab: #0078d4;
+            --inactive-tab: #f3f3f3;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 400;
+        }
+        
+        .toolbar {
+            background-color: var(--toolbar-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 5px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .toolbar-group {
+            display: flex;
+            border-right: 1px solid var(--border-color);
+            padding-right: 10px;
+            margin-right: 10px;
+            align-items: center;
+        }
+        
+        .toolbar-button {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 6px 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .toolbar-button:hover {
+            background-color: var(--hover-color);
+            border-color: var(--border-color);
+        }
+        
+        .tab-container {
+            background-color: #f0f0f0;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .tab {
+            display: flex;
+            gap: 0;
+            padding: 0 20px;
+        }
+        
+        .tab button {
+            padding: 10px 20px;
+            border: none;
+            border-right: 1px solid #ddd;
+            border-bottom: 2px solid transparent;
+            background: var(--inactive-tab);
+            color: #333;
+            cursor: pointer;
+            font-size: 14px;
+            position: relative;
+            bottom: -2px;
+            transition: all 0.2s ease;
+        }
+        
+        .tab button.active-tab {
+            background: white;
+            border-bottom: 2px solid var(--active-tab);
+            font-weight: 500;
+        }
+        
+        .tab button:hover:not(.active-tab) {
+            background-color: #e3e3e3;
+        }
+        
+        .tab-content {
+            display: none;
+            width: 100%;
+            padding: 0;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .sheet-container {
+            padding: 0;
+            border: none;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 15px;
+            background-color: var(--toolbar-bg);
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: #666;
+        }
+        
+        /* Custom styling for Handsontable */
+        .handsontable .htDimmed {
+            color: #999;
+        }
+        
+        .handsontable .current {
+            background-color: #e6f2ff;
+        }
+        
+        /* Dropdown menu styles */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+        }
+        
+        .dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .dropdown-item:hover {
+            background-color: var(--hover-color);
+        }
+        
+        .dropdown-divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 5px 0;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1500;
+        }
+        
+        .modal-content {
+            background-color: white;
+            width: 500px;
+            max-width: 90%;
+            margin: 100px auto;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #e3e3e3;
+            color: #333;
+        }
+        
+        .close {
+            cursor: pointer;
+            font-size: 20px;
+        }
+        
+        /* Form styles */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        /* Search highlights */
+        .ht__highlight {
+            background-color: yellow !important;
+        }
+        
+        /* Duplicate highlights */
+        .duplicate-cell {
+            background-color: #ffcccc !important;
+        }
+        
+        /* Formula bar */
+        .formula-bar {
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
+            background-color: var(--toolbar-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .cell-address {
+            width: 80px;
+            text-align: center;
+            padding: 5px;
+            background-color: white;
+            border: 1px solid var(--border-color);
+            margin-right: 10px;
+            font-size: 14px;
+        }
+        
+        .formula-input {
+            flex-grow: 1;
+            padding: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <h1>Advanced Excel Editor</h1>
+            <div>
+                <span id="file-name">Untitled.xlsx</span>
+            </div>
+        </div>
+        
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="toolbar-button" id="new-file" onclick="newFile()">
+                    <i class="fas fa-file"></i> New
+                </button>
+                <button class="toolbar-button" id="open-file" onclick="openFile()">
+                    <i class="fas fa-folder-open"></i> Open
+                </button>
+                <button class="toolbar-button" id="save-excel" onclick="saveFile()">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <button class="toolbar-button" id="download-excel" onclick="downloadFile()">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            </div>
+            
+            <div class="toolbar-group">
+        <button onclick="cutText()">Cut</button>
+                <button class="toolbar-button" id="cut-button" onclick="cutText()">
+                    <i class="fas fa-cut"></i> Cut
+                </button>
+                <button class="toolbar-button" id="copy-button" onclick="copyText()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+                <button class="toolbar-button" id="paste-button" onclick="pasteText()">
+                    <i class="fas fa-paste"></i> Paste
+                </button>
+            </div>
+            
+            <div class="toolbar-group">
+                <div class="dropdown">
+                    <button class="toolbar-button" id="insert-button" onclick="insertRow()">
+                        <i class="fas fa-plus"></i> Insert
+                    </button>
+                    <div class="dropdown-content" id="insert-dropdown">
+                        <div class="dropdown-item" id="insert-row-above">
+                            <i class="fas fa-arrow-up"></i> Insert Row Above
+                        </div>
+                        <div class="dropdown-item" id="insert-row-below">
+                            <i class="fas fa-arrow-down"></i> Insert Row Below
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" id="insert-column-left">
+                            <i class="fas fa-arrow-left"></i> Insert Column Left
+                        </div>
+                        <div class="dropdown-item" id="insert-column-right">
+                            <i class="fas fa-arrow-right"></i> Insert Column Right
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="dropdown">
+                    <button class="toolbar-button" id="delete-button" onclick="deleteRow()">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <div class="dropdown-content" id="delete-dropdown">
+                        <div class="dropdown-item" id="delete-row">
+                            <i class="fas fa-minus"></i> Delete Row
+                        </div>
+                        <div class="dropdown-item" id="delete-column">
+                            <i class="fas fa-minus"></i> Delete Column
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="toolbar-group">
+                <button class="toolbar-button" id="find-button">
+                    <i class="fas fa-search"></i> Find
+                </button>
+                <button class="toolbar-button" id="find-duplicates" onclick="findDuplicates()">
+                    <i class="fas fa-clone"></i> Find Duplicates
+                </button>
+                <button class="toolbar-button" id="clear-duplicates">
+                    <i class="fas fa-eraser"></i> Clear Highlights
+                </button>
+            </div>
+            
+            <div class="toolbar-group">
+                <button class="toolbar-button" id="sort-asc" onclick="sortTable()">
+                    <i class="fas fa-sort-alpha-down"></i> Sort A-Z
+                </button>
+                <button class="toolbar-button" id="sort-desc" onclick="sortTable()">
+                    <i class="fas fa-sort-alpha-down-alt"></i> Sort Z-A
+                </button>
+                <button class="toolbar-button" id="filter-button">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+        </div>
+        
+        <div class="formula-bar">
+            <div class="cell-address" id="current-cell">A1</div>
+            <input type="text" class="formula-input" id="formula-input" placeholder="Enter formula or value">
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab">
+                <button id="main-tab" class="active-tab">Main Sheet</button>
+                <button id="business-tab">Business Approved List</button>
+                <button id="add-sheet-tab"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        
+        <div id="main-sheet" class="tab-content active">
+            <div class="sheet-container">
+                <div id="main-container"></div>
+            </div>
+        </div>
+        
+        <div id="business-sheet" class="tab-content">
+            <div class="sheet-container">
+                <div id="business-container"></div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div id="sheet-info">Row: 1, Column: A</div>
+            <div id="selection-info">No selection</div>
+        </div>
+    </div>
+    
+    <!-- Find Modal -->
+    <div id="find-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Find</h3>
+                <span class="close" id="close-find">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="find-text">Find what:</label>
+                    <input type="text" id="find-text" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="match-case"> Match case
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="find-next" class="btn btn-primary">Find Next</button>
+                <button id="find-all" class="btn btn-primary">Find All</button>
+                <button id="close-find-btn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+        <button id="save-excel">Save Changes</button>
+    </div>
+    
+    <!-- Add custom functionality for Excel-like behavior -->
+    <script>
+        // Initialize with some default data or use the provided data
+        var mainData = {{ main_data|safe }};
+        var businessData = {{ business_data|safe }};
+        // Check if data was passed from Django context
+
+        // Ensure minimum 50 rows & 6 columns for Main Sheet
+        while (mainData.length < 50) {
+            mainData.push(new Array(6).fill(""));
+        }
+
+        // Ensure minimum 300 rows & 6 columns for Business Approved List
+        while (businessData.length < 300) {
+            businessData.push(new Array(6).fill(""));
+        }
+
+        try {
+            // This would be replaced by your Django template context
+            if (typeof {{ main_data|safe }} !== 'undefined') {
+                mainData = {{ main_data|safe }};
+            }
+            if (typeof {{ business_data|safe }} !== 'undefined') {
+                businessData = {{ business_data|safe }};
+            }
+        } catch (e) {
+            console.log("Using default data");
+        }
+
+        var mainContainer = document.getElementById('main-container');
+        var businessContainer = document.getElementById('business-container');
+        var currentHot; // Reference to the active Handsontable instance
+
+        // Main sheet configuration
+        var mainHot = new Handsontable(mainContainer, {
+            data: mainData,
+            colHeaders: true,
+            rowHeaders: true,
+            manualColumnResize: true,
+            manualRowResize: true,
+            contextMenu: true,
+            dropdownMenu: true,
+            filters: true,
+            height: 600,
+            width: "100%",
+            licenseKey: 'non-commercial-and-evaluation',
+            afterSelectionEnd: updateSelectionInfo,
+            afterChange: updateFormulaBar,
+            afterDocumentKeyDown: captureKeyboardShortcuts
+        });
+
+        // Business sheet configuration
+        var businessHot = new Handsontable(businessContainer, {
+            data: businessData,
+            colHeaders: true,
+            rowHeaders: true,
+            manualColumnResize: true,
+            manualRowResize: true,
+            contextMenu: true,
+            dropdownMenu: true,
+            filters: true,
+            height: 600,
+            width: "100%",
+            licenseKey: 'non-commercial-and-evaluation',
+            afterSelectionEnd: updateSelectionInfo,
+            afterChange: updateFormulaBar,
+            afterDocumentKeyDown: captureKeyboardShortcuts
+        });
+        
+        // Set current active table to main by default
+        currentHot = mainHot;
+
+        function insertRow() { mainHot.alter('insert_row'); }
+        function deleteRow() { mainHot.alter('remove_row'); }
+        function cutText() { document.execCommand("cut"); }
+        function copyText() { document.execCommand("copy"); }
+        function pasteText() { document.execCommand("paste"); }
+        function findDuplicates() { alert("Duplicate detection not implemented yet."); }
+        function sortTable() { alert("Sorting not implemented yet."); }
+
+        // Tab switching logic
+        document.getElementById("main-tab").addEventListener("click", function () {
+            document.getElementById("main-sheet").classList.add("active");
+            document.getElementById("business-sheet").classList.remove("active");
+            document.getElementById("main-tab").classList.add("active-tab");
+            document.getElementById("business-tab").classList.remove("active-tab");
+            currentHot = mainHot;
+            updateSelectionInfo();
+        });
+
+        document.getElementById("business-tab").addEventListener("click", function () {
+            document.getElementById("business-sheet").classList.add("active");
+            document.getElementById("main-sheet").classList.remove("active");
+            document.getElementById("business-tab").classList.add("active-tab");
+            document.getElementById("main-tab").classList.remove("active-tab");
+            currentHot = businessHot;
+            updateSelectionInfo();
+        });
+
+        // Update the status bar with cell position and selection info
+        function updateSelectionInfo(r, c, r2, c2) {
+            let selectedRow = currentHot.getSelected() ? currentHot.getSelected()[0][0] : 0;
+            let selectedCol = currentHot.getSelected() ? currentHot.getSelected()[0][1] : 0;
+            
+            // Convert numeric column to letter (A, B, C, etc.)
+            let colLetter = String.fromCharCode(65 + selectedCol);
+            
+            // Display current position
+            document.getElementById("sheet-info").textContent = `Row: ${selectedRow + 1}, Column: ${colLetter}`;
+            document.getElementById("current-cell").textContent = `${colLetter}${selectedRow + 1}`;
+            
+            // If there's a range selection
+            if (currentHot.getSelected() && currentHot.getSelected()[0].length > 2) {
+                let startRow = currentHot.getSelected()[0][0];
+                let startCol = currentHot.getSelected()[0][1];
+                let endRow = currentHot.getSelected()[0][2];
+                let endCol = currentHot.getSelected()[0][3];
+                
+                let startColLetter = String.fromCharCode(65 + startCol);
+                let endColLetter = String.fromCharCode(65 + endCol);
+                
+                document.getElementById("selection-info").textContent = 
+                    `Selected: ${startColLetter}${startRow + 1}:${endColLetter}${endRow + 1}`;
+            } else {
+                document.getElementById("selection-info").textContent = "No range selection";
+            }
+            
+            // Update formula bar
+            updateFormulaBar();
+        }
+
+        // Update the formula bar with the current cell value
+        function updateFormulaBar() {
+            if (currentHot.getSelected()) {
+                let selectedRow = currentHot.getSelected()[0][0];
+                let selectedCol = currentHot.getSelected()[0][1];
+                let value = currentHot.getDataAtCell(selectedRow, selectedCol) || '';
+                document.getElementById("formula-input").value = value;
+            }
+        }
+
+        // Apply the formula bar value to the current cell
+        document.getElementById("formula-input").addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && currentHot.getSelected()) {
+                let selectedRow = currentHot.getSelected()[0][0];
+                let selectedCol = currentHot.getSelected()[0][1];
+                let value = document.getElementById("formula-input").value;
+                
+                // Check if it's a formula (starts with =)
+                if (value.startsWith('=')) {
+                    try {
+                        // Simple formula evaluation (this is a basic implementation)
+                        // In a real Excel-like app, you'd need a more robust formula parser
+                        let formula = value.substring(1);
+                        // Replace cell references with their values
+                        let regex = /[A-Z]+[0-9]+/g;
+                        let cellRefs = formula.match(regex) || [];
+                        
+                        for (let cellRef of cellRefs) {
+                            let col = cellRef.match(/[A-Z]+/)[0].charCodeAt(0) - 65;
+                            let row = parseInt(cellRef.match(/[0-9]+/)[0]) - 1;
+                            let cellValue = currentHot.getDataAtCell(row, col) || 0;
+                            formula = formula.replace(cellRef, cellValue);
+                        }
+                        
+                        // Evaluate the formula
+                        try {
+                            let result = eval(formula);
+                            currentHot.setDataAtCell(selectedRow, selectedCol, result);
+                        } catch (evalError) {
+                            // If evaluation fails, store the formula as is
+                            currentHot.setDataAtCell(selectedRow, selectedCol, value);
+                        }
+                    } catch (error) {
+                        // If parsing fails, store the formula as is
+                        currentHot.setDataAtCell(selectedRow, selectedCol, value);
+                    }
+                } else {
+                    // Not a formula, just set the value
+                    currentHot.setDataAtCell(selectedRow, selectedCol, value);
+                }
+                e.preventDefault();
+            }
+        });
+
+        // Dropdown menu handlers
+        document.getElementById("insert-button").addEventListener("click", function(e) {
+            e.stopPropagation();
+            toggleDropdown("insert-dropdown");
+        });
+
+        document.getElementById("delete-button").addEventListener("click", function(e) {
+            e.stopPropagation();
+            toggleDropdown("delete-dropdown");
+        });
+
+        function toggleDropdown(id) {
+            var dropdown = document.getElementById(id);
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+            
+            // Close other dropdowns
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                if (dropdowns[i].id !== id && dropdowns[i].style.display === "block") {
+                    dropdowns[i].style.display = "none";
+                }
+            }
+        }
+
+        // Close dropdowns when clicking outside
+        window.addEventListener("click", function() {
+            var dropdowns = document.getElementsByClassName("dropdown-content");
+            for (var i = 0; i < dropdowns.length; i++) {
+                dropdowns[i].style.display = "none";
+            }
+        });
+
+        // Insert row/column handlers
+        document.getElementById("insert-row-above").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedRow = currentHot.getSelected()[0][0];
+                currentHot.alter('insert_row', selectedRow);
+            }
+        });
+
+        document.getElementById("insert-row-below").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedRow = currentHot.getSelected()[0][0];
+                currentHot.alter('insert_row', selectedRow + 1);
+            }
+        });
+
+        document.getElementById("insert-column-left").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedCol = currentHot.getSelected()[0][1];
+                currentHot.alter('insert_col', selectedCol);
+            }
+        });
+
+        document.getElementById("insert-column-right").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedCol = currentHot.getSelected()[0][1];
+                currentHot.alter('insert_col', selectedCol + 1);
+            }
+        });
+
+        // Delete row/column handlers
+        document.getElementById("delete-row").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedRow = currentHot.getSelected()[0][0];
+                currentHot.alter('remove_row', selectedRow);
+            }
+        });
+
+        document.getElementById("delete-column").addEventListener("click", function() {
+            if (currentHot.getSelected()) {
+                let selectedCol = currentHot.getSelected()[0][1];
+                currentHot.alter('remove_col', selectedCol);
+            }
+        });
+
+        // Cut, Copy, Paste functionality
+        let clipboard = {
+            data: null,
+            isCut: false
+        };
+
+        document.getElementById("cut-button").addEventListener("click", function() {
+            if (!currentHot.getSelected()) return;
+            
+            let selected = currentHot.getSelected()[0];
+            let startRow = Math.min(selected[0], selected[2]);
+            let startCol = Math.min(selected[1], selected[3]);
+            let endRow = Math.max(selected[0], selected[2]);
+            let endCol = Math.max(selected[1], selected[3]);
+            
+            clipboard.data = [];
+            for (let row = startRow; row <= endRow; row++) {
+                let rowData = [];
+                for (let col = startCol; col <= endCol; col++) {
+                    rowData.push(currentHot.getDataAtCell(row, col));
+                }
+                clipboard.data.push(rowData);
+            }
+            
+            clipboard.isCut = true;
+        });
+
+        document.getElementById("copy-button").addEventListener("click", function() {
+            if (!currentHot.getSelected()) return;
+            
+            let selected = currentHot.getSelected()[0];
+            let startRow = Math.min(selected[0], selected[2]);
+            let startCol = Math.min(selected[1], selected[3]);
+            let endRow = Math.max(selected[0], selected[2]);
+            let endCol = Math.max(selected[1], selected[3]);
+            
+            clipboard.data = [];
+            for (let row = startRow; row <= endRow; row++) {
+                let rowData = [];
+                for (let col = startCol; col <= endCol; col++) {
+                    rowData.push(currentHot.getDataAtCell(row, col));
+                }
+                clipboard.data.push(rowData);
+            }
+            
+            clipboard.isCut = false;
+        });
+
+        document.getElementById("paste-button").addEventListener("click", function() {
+            if (!clipboard.data || !currentHot.getSelected()) return;
+            
+            let selected = currentHot.getSelected()[0];
+            let startRow = selected[0];
+            let startCol = selected[1];
+            
+            for (let i = 0; i < clipboard.data.length; i++) {
+                for (let j = 0; j < clipboard.data[i].length; j++) {
+                    if (startRow + i < currentHot.countRows() && startCol + j < currentHot.countCols()) {
+                        currentHot.setDataAtCell(startRow + i, startCol + j, clipboard.data[i][j]);
+                    }
+                }
+            }
+            
+            if (clipboard.isCut) {
+                // Clear the cut cells
+                let selected = currentHot.getSelected()[0];
+                let cutStartRow = Math.min(selected[0], selected[2]);
+                let cutStartCol = Math.min(selected[1], selected[3]);
+                
+                for (let i = 0; i < clipboard.data.length; i++) {
+                    for (let j = 0; j < clipboard.data[i].length; j++) {
+                        currentHot.setDataAtCell(cutStartRow + i, cutStartCol + j, "");
+                    }
+                }
+                
+                clipboard.data = null;
+                clipboard.isCut = false;
+            }
+        });
+
+        // Find functionality
+        document.getElementById("find-button").addEventListener("click", function() {
+            document.getElementById("find-modal").style.display = "block";
+        });
+
+        document.getElementById("close-find").addEventListener("click", function() {
+            document.getElementById("find-modal").style.display = "none";
+        });
+
+        document.getElementById("close-find-btn").addEventListener("click", function() {
+            document.getElementById("find-modal").style.display = "none";
+        });
+
+        let highlightedCells = [];
+
+        document.getElementById("find-next").addEventListener("click", function() {
+            findInSheet("next");
+        });
+
+        document.getElementById("find-all").addEventListener("click", function() {
+            findInSheet("all");

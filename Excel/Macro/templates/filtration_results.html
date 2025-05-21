@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMT Filtration Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://kit.fontawesome.com/a2e0b6cfd4.js" crossorigin="anonymous"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --accent-color: #f39c12;
+            --dark-color: #2c3e50;
+            --light-color: #ecf0f1;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, var(--dark-color), var(--primary-color));
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .page-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1IiBoZWlnaHQ9IjUiPgo8cmVjdCB3aWR0aD0iNSIgaGVpZ2h0PSI1IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSI+PC9yZWN0Pgo8L3N2Zz4=');
+            opacity: 0.2;
+        }
+
+        .page-title {
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .page-subtitle {
+            font-weight: 300;
+            opacity: 0.8;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(to right, var(--primary-color), var(--secondary-color));
+            color: white;
+            font-weight: 600;
+            padding: 1rem 1.5rem;
+            border: none;
+        }
+        
+        .progress-bar-container {
+            height: 8px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(to right, var(--secondary-color), var(--accent-color));
+            width: 0%;
+            transition: width 1.5s ease-in-out;
+        }
+        
+        .spinner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 0;
+        }
+        
+        .spinner-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 4px solid rgba(46, 204, 113, 0.2);
+            border-top-color: var(--secondary-color);
+            animation: spin 1.5s linear infinite;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .file-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .file-table th {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--dark-color);
+            font-weight: 600;
+            border: none;
+        }
+        
+        .file-table th, .file-table td {
+            padding: 1rem 1.5rem;
+            vertical-align: middle;
+            border: none;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .file-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+        
+        .file-table tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        .btn {
+            border-radius: 30px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(to right, var(--primary-color), #2980b9);
+            border: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(to right, var(--secondary-color), #27ae60);
+            border: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+            border: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border-left: 4px solid var(--primary-color);
+            padding: 1rem 1.5rem;
+        }
+        
+        .alert-info {
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left-color: var(--primary-color);
+        }
+        
+        .alert-success {
+            background-color: rgba(46, 204, 113, 0.1);
+            border-left-color: var(--secondary-color);
+        }
+        
+        .badge {
+            padding: 0.5em 0.8em;
+            border-radius: 30px;
+            font-weight: 500;
+            font-size: 0.75rem;
+        }
+        
+        .badge-success {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .badge-warning {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .badge-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .version-selector {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 2rem;
+        }
+        
+        .version-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .version-option {
+            flex: 1;
+            background-color: white;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .version-option:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .version-option.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        .icon-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: 50%;
+            color: var(--primary-color);
+            margin-right: 0.5rem;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--dark-color);
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .page-header {
+                padding: 1.5rem;
+            }
+            
+            .version-options {
+                flex-direction: column;
+            }
+        }
+
+        /* Status indicator styles */
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-approved {
+            background-color: var(--secondary-color);
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.5);
+        }
+
+        .status-rejected {
+            background-color: #e74c3c;
+            box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
+        }
+
+        /* Floating action button */
+        .fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Particle background effect */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+<div class="particles" id="particles"></div>
+
+<div class="main-container">
+    <!-- Header Section -->
+    <div class="page-header animate__animated animate__fadeIn">
+        <h1 class="page-title">DMT Filtration Dashboard</h1>
+        <p class="page-subtitle">Advanced data processing and filtration system</p>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="headerProgress"></div>
+        </div>
+    </div>
+
+    <!-- Loading Section -->
+    <div id="loadingSection" class="card animate__animated animate__fadeIn">
+        <div class="card-body">
+            <div class="spinner">
+                <div class="spinner-icon"></div>
+                <h4 class="mt-4">Processing Your Data</h4>
+                <p class="text-muted">Running DMT Filter algorithm. Please wait...</p>
+                <div class="progress mt-3" style="height: 6px; width: 80%;">
+                    <div id="processingProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section (Hidden Initially) -->
+    <div id="resultsSection" class="animate__animated animate__fadeIn" style="display: none;">
+
+        <!-- Quick Stats Summary -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="icon-circle mb-3">
+                            <i class="fas fa-file-alt fa-lg"></i>
+                        </div>
+                        <h3 id="totalRecords">0</h3>
+                        <p class="text-muted mb-0">Total Records</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="icon-circle mb-3" style="background-color: rgba(46, 204, 113, 0.1); color: var(--secondary-color);">
+                            <i class="fas fa-check-circle fa-lg"></i>
+                        </div>
+                        <h3 id="approvedCount">0</h3>
+                        <p class="text-muted mb-0">Approved Items</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="icon-circle mb-3" style="background-color: rgba(231, 76, 60, 0.1); color: #e74c3c;">
+                            <i class="fas fa-times-circle fa-lg"></i>
+                        </div>
+                        <h3 id="rejectedCount">0</h3>
+                        <p class="text-muted mb-0">Rejected Items</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Version Selection Card -->
+        <div class="card version-selector animate__animated animate__fadeIn">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fas fa-code-branch me-2"></i> Version Selection</h5>
+                    <span class="badge bg-primary">Required</span>
+                </div>
+                <p class="text-muted">Please select the version you wish to use for this filtration process:</p>
+                
+                <div class="version-options">
+                    <div class="version-option" data-version="latest">
+                        <div class="mb-2"><i class="fas fa-star fa-lg" style="color: var(--accent-color);"></i></div>
+                        <h6>Latest Version</h6>
+                        <small class="text-muted">v2.4.1 (May 10, 2025)</small>
+                    </div>
+                    <div class="version-option" data-version="stable">
+                        <div class="mb-2"><i class="fas fa-shield-alt fa-lg" style="color: var(--secondary-color);"></i></div>
+                        <h6>Stable Version</h6>
+                        <small class="text-muted">v2.3.0 (Apr 22, 2025)</small>
+                    </div>
+                    <div class="version-option" data-version="legacy">
+                        <div class="mb-2"><i class="fas fa-history fa-lg" style="color: var(--primary-color);"></i></div>
+                        <h6>Legacy Version</h6>
+                        <small class="text-muted">v1.9.8 (Mar 15, 2025)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table Card -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-table me-2"></i> Filtered Results</span>
+                <div>
+                    <button class="btn btn-sm btn-outline-light" id="refreshBtn">
+                        <i class="fas fa-sync-alt me-1"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm btn-outline-light ms-2" id="exportBtn">
+                        <i class="fas fa-download me-1"></i> Export
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table file-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Item Name</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Last Updated</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="filteredDataBody">
+                            <!-- Will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <nav aria-label="Table navigation">
+                    <ul class="pagination justify-content-end mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1"><i class="fas fa-chevron-left"></i></a>
+                        </li>
+                        <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                        <li class="page-item"><a class="page-link" href="#">2</a></li>
+                        <li class="page-item"><a class="page-link" href="#">3</a></li>
+                        <li class="page-item">
+                            <a class="page-link" href="#"><i class="fas fa-chevron-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Configuration Management Card -->
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-cogs me-2"></i> Configuration Management
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h6 class="fw-bold">Config Folders</h6>
+                    <p>Choose whether to retain or remove the configuration folders used in this filtration process.</p>
+                </div>
+                
+                <div class="d-flex gap-3">
+                    <button id="keepConfigsBtn" class="btn btn-success">
+                        <i class="fas fa-save me-2"></i> Keep Configs
+                    </button>
+                    <button id="deleteConfigsBtn" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-2"></i> Delete Configs
+                    </button>
+                </div>
+                
+                <!-- Deletion Progress (Hidden Initially) -->
+                <div id="deletionProgress" style="display: none;" class="mt-4">
+                    <h6 class="fw-bold"><i class="fas fa-spinner fa-spin me-2"></i> Processing</h6>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar bg-danger progress-bar-striped progress-bar-animated" id="deletionProgressBar" style="width: 0%"></div>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" id="deletionStatus">Preparing to delete config folders...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="fab" id="helpBtn">
+    <i class="fas fa-question"></i>
+</div>
+
+<!-- Help Modal -->
+<div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="helpModalLabel"><i class="fas fa-info-circle me-2"></i> DMT Filter Help</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6 class="fw-bold">About DMT Filtration</h6>
+                <p>The DMT Filtration system processes your Excel data through advanced algorithms to categorize and filter entries based on predefined criteria. This dashboard allows you to view and manage the filtration results.</p>
+                
+                <h6 class="fw-bold mt-4">Quick Start Guide</h6>
+                <ol>
+                    <li>Select your preferred version from the options provided</li>
+                    <li>Review the filtered data in the table</li>
+                    <li>Use the export button to download the processed data</li>
+                    <li>Choose whether to keep or delete configuration folders</li>
+                </ol>
+                
+                <h6 class="fw-bold mt-4">Need Further Assistance?</h6>
+                <p>Contact our support team at <a href="mailto:support@dmtfilter.com">support@dmtfilter.com</a> or call +1-555-DMT-HELP.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                <i class="fas fa-check-circle me-2"></i> <span id="toastMessage">Operation completed successfully!</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Create floating particles
+        createParticles();
+        
+        // Animate header progress bar
+        setTimeout(() => {
+            document.getElementById('headerProgress').style.width = '100%';
+        }, 300);
+        
+        // Simulation: Processing progress
+        simulateProcessing();
+        
+        // Version selection functionality
+        document.querySelectorAll('.version-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.version-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                showToast('Version ' + this.dataset.version + ' selected');
+            });
+        });
+        
+        // Refresh button animation
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            this.querySelector('i').classList.add('fa-spin');
+            setTimeout(() => {
+                this.querySelector('i').classList.remove('fa-spin');
+                showToast('Data refreshed successfully');
+            }, 1000);
+        });
+        
+        // Export button functionality
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            showToast('Exporting data to Excel...');
+        });
+        
+        // Help button functionality
+        document.getElementById('helpBtn').addEventListener('click', function() {
+            const helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
+            helpModal.show();
+        });
+        
+        // Config deletion functionality
+        document.getElementById('deleteConfigsBtn').addEventListener('click', function() {
+            const deletionProgress = document.getElementById('deletionProgress');
+            const deletionProgressBar = document.getElementById('deletionProgressBar');
+            const deletionStatus = document.getElementById('deletionStatus');
+            
+            deletionProgress.style.display = 'block';
+            
+            // Simulate deletion progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                deletionProgressBar.style.width = progress + '%';
+                
+                if (progress === 30) {
+                    deletionStatus.textContent = 'Removing temporary files...';
+                } else if (progress === 60) {
+                    deletionStatus.textContent = 'Cleaning up database entries...';
+                } else if (progress === 90) {
+                    deletionStatus.textContent = 'Finalizing deletion...';
+                }
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    deletionStatus.textContent = 'Config folders successfully deleted!';
+                    showToast('Configuration folders deleted successfully');
+                    
+                    setTimeout(() => {
+                        deletionProgress.innerHTML = `
+                            <div class="alert alert-success mt-3 animate__animated animate__fadeIn">
+                                <i class="fas fa-check-circle me-2"></i> Config folders deleted successfully.
+                            </div>
+                        `;
+                    }, 1000);
+                }
+            }, 300);
+        });
+        
+        // Keep configs button
+        document.getElementById('keepConfigsBtn').addEventListener('click', function() {
+            showToast('Configuration folders retained');
+        });
+    });
+    
+    // Simulate the data processing
+    function simulateProcessing() {
+        const loadingSection = document.getElementById('loadingSection');
+        const resultsSection = document.getElementById('resultsSection');
+        const processingProgress = document.getElementById('processingProgress');
+        
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 5;
+            processingProgress.style.width = progress + '%';
+            
+            if (progress >= 100) {
+                clearInterval(interval);
+                
+                setTimeout(() => {
+                    loadingSection.classList.add('animate__fadeOut');
+                    setTimeout(() => {
+                        loadingSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        
+                        // Populate table with sample data
+                        populateTable();
+                        
+                        // Animate counters
+                        animateCounter('totalRecords', 0, 48);
+                        animateCounter('approvedCount', 0, 32);
+                        animateCounter('rejectedCount', 0, 16);
+                    }, 500);
+                }, 500);
+            }
+        }, 100);
+    }
+    
+    // Populate table with sample data
+    function populateTable() {
+        const tableBody = document.getElementById('filteredDataBody');
+        const sampleData = [
+            {id: 1, name: "Advanced Filter Module", category: "Core Components", status: "Approved", date: "May 12, 2025"},
+            {id: 2, name: "Data Integration API", category: "Interfaces", status: "Approved", date: "May 11, 2025"},
+            {id: 3, name: "Legacy Adapter v1.2", category: "Adapters", status: "Rejected", date: "May 09, 2025"},
+            {id: 4, name: "Security Gateway", category: "Core Components", status: "Approved", date: "May 08, 2025"},
+            {id: 5, name: "Report Generator", category: "Utilities", status: "Approved", date: "May 07, 2025"},
+            {id: 6, name: "XML Parser Extension", category: "Extensions", status: "Rejected", date: "May 05, 2025"}
+        ];
+        
+        tableBody.innerHTML = '';
+        
+        sampleData.forEach(item => {
+            const statusClass = item.status === "Approved" ? "status-approved" : "status-rejected";
+            const badgeClass = item.status === "Approved" ? "badge-success" : "badge-danger";
+            
+            const row = document.createElement('tr');
+            row.className = 'animate__animated animate__fadeIn';
+            row.style.animationDelay = (item.id * 0.1) + 's';
+            
+            row.innerHTML = `
+                <td>${item.id}</td>
+                <td><strong>${item.name}</strong></td>
+                <td><span class="badge bg-light text-dark">${item.category}</span></td>
+                <td><span class="status-indicator ${statusClass}"></span><span class="badge ${badgeClass}">${item.status}</span></td>
+                <td>${item.date}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary view-btn" data-id="${item.id}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-1 edit-btn" data-id="${item.id}">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
+        
+        // Add click events to buttons
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                showToast(`Viewing details for item #${this.dataset.id}`);
+            });
+        });
+        
+        document.querySelectorAll('.edit-btn').forEach

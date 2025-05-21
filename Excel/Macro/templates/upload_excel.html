@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Excel Management System</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Animate.css for animations -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0069d9;
+            --secondary: #2a76dd;
+            --tertiary: #4285f4;
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --light: #f8f9fa;
+            --dark: #343a40;
+            --gray: #6c757d;
+            --border-radius: 10px;
+            --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+            color: #333;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 70px;
+            overflow-x: hidden;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary), var(--tertiary));
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            padding: 15px 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: white !important;
+            transition: all 0.3s ease;
+        }
+        
+        .navbar-brand:hover {
+            transform: scale(1.03);
+        }
+        
+        .navbar .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            margin: 0 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .navbar .nav-link:hover {
+            color: #fff !important;
+            transform: translateY(-2px);
+        }
+        
+        .navbar .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 0;
+            background-color: white;
+            transition: width 0.3s ease;
+        }
+        
+        .navbar .nav-link:hover::after {
+            width: 100%;
+        }
+        
+        .main-container {
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-header {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -5px;
+            width: 40px;
+            height: 4px;
+            background: linear-gradient(to right, var(--primary), var(--tertiary));
+            border-radius: 2px;
+            animation: widthGrow 1.5s ease-out;
+        }
+        
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            margin-bottom: 25px;
+            background-color: #fff;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--tertiary));
+            color: white;
+            border: none;
+            padding: 20px;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+        
+        .card-body {
+            padding: 30px;
+        }
+        
+        .upload-card {
+            background: linear-gradient(145deg, #ffffff, #f8f9fa);
+        }
+        
+        .file-upload-area {
+            position: relative;
+            min-height: 200px;
+            border: 2px dashed rgba(0, 105, 217, 0.4);
+            border-radius: var(--border-radius);
+            background-color: rgba(0, 105, 217, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .file-upload-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(0, 105, 217, 0.05);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .file-upload-area.drag-over {
+            border-color: var(--success);
+            background-color: rgba(40, 167, 69, 0.05);
+            animation: glow 1.5s infinite alternate;
+        }
+        
+        .file-upload-area input[type="file"] {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+        
+        .upload-icon {
+            font-size: 60px;
+            color: var(--primary);
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-upload-area:hover .upload-icon {
+            transform: scale(1.1);
+            color: var(--secondary);
+        }
+        
+        .upload-text {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--dark);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .upload-subtext {
+            font-size: 14px;
+            color: var(--gray);
+            text-align: center;
+        }
+        
+        .selected-file {
+            display: none;
+            background-color: rgba(0, 105, 217, 0.1);
+            padding: 12px 20px;
+            border-radius: 30px;
+            margin-top: 20px;
+            align-items: center;
+            animation: fadeInUp 0.5s;
+        }
+        
+        .selected-file-icon {
+            color: var(--primary);
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        
+        .selected-file-name {
+            font-weight: 500;
+            color: var(--dark);
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 350px;
+        }
+        
+        .remove-file {
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+        
+        .remove-file:hover {
+            transform: scale(1.2);
+        }
+        
+        .folder-input {
+            margin-bottom: 25px;
+        }
+        
+        .form-floating .form-control {
+            height: 58px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .form-floating .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(0, 105, 217, 0.25);
+        }
+        
+        .btn-primary-gradient {
+            background: linear-gradient(135deg, var(--primary), var(--tertiary));
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 30px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            box-shadow: 0 4px 15px rgba(0, 105, 217, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 105, 217, 0.4);
+        }
+        
+        .btn-primary-gradient:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 10px rgba(0, 105, 217, 0.2);
+        }
+        
+        .btn-primary-gradient i {
+            margin-right: 8px;
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary);
+            border-color: var(--primary);
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .btn-warning {
+            background-color: var(--warning);
+            border: none;
+            color: #212529;
+            border-radius: 8px;
+            padding: 8px 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e0a800;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 193, 7, 0.3);
+        }
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            color: var(--primary);
+        }
+        
+        .loading-text {
+            margin-top: 15px;
+            color: var(--dark);
+            font-weight: 500;
+        }
+        
+        .progress-container {
+            width: 300px;
+            margin-top: 20px;
+            background-color: #e9ecef;
+            border-radius: 30px;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background: linear-gradient(to right, var(--primary), var(--tertiary));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 30px;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            max-width: 350px;
+            z-index: 1050;
+            opacity: 0;
+            transform: translateX(50px);
+            transition: all 0.5s ease;
+        }
+        
+        .alert-container.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        
+        .alert {
+            border: none;
+            border-radius: 8px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .alert-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        
+        .excel-selector {
+            background-color: white;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            margin-top: 30px;
+            border-left: 4px solid var(--tertiary);
+            animation: fadeIn 0.5s;
+        }
+        
+        .excel-selector-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 20px;
+        }
+        
+        .select-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .form-select {
+            border-radius: 8px;
+            min-width: 250px;
+            padding: 12px;
+            font-size: 15px;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 0.25rem rgba(0, 105, 217, 0.25);
+        }
+        
+        .action-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 40px;
+        }
+        
+        .recent-uploads {
+            margin-top: 50px;
+        }
+        
+        .recent-uploads-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .uploads-table {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table thead th {
+            background: linear-gradient(135deg, var(--primary), var(--tertiary));
+            color: white;
+            font-weight: 500;
+            border: none;
+            padding: 15px 20px;
+        }
+        
+        .table tbody td {
+            padding: 15px 20px;
+            vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+            color: var(--dark);
+        }
+        
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .table tbody tr {
+            transition: all 0.2s ease;
+        }
+        
+        .table tbody tr:hover {
+            background-color: rgba(0, 105, 217, 0.05);
+            transform: translateX(5px);
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-badge-success {
+            background-color: rgba(40, 167, 69, 0.1);
+            color: var(--success);
+        }
+        
+        .badge {
+            padding: 0.5em 0.8em;
+            transition: all 0.3s ease;
+        }
+        
+        .badge:hover {
+            transform: scale(1.05);
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        
+        .action-btn-view {
+            background-color: var(--tertiary);
+        }
+        
+        .action-btn-download {
+            background-color: var(--success);
+        }
+        
+        .action-btn-delete {
+            background-color: var(--danger);
+        }
+        
+        .action-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .stats-container {
+            margin-bottom: 30px;
+        }
+        
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 240px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+            display: flex;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: fadeIn 0.5s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+        
+        .stat-card:hover::before {
+            opacity: 1;
+            animation: ripple 1.5s infinite;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(50, 50, 93, 0.1), 0 5px 15px rgba(0, 0, 0, 0.07);
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 20px;
+            font-size: 24px;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover .stat-icon {
+            transform: rotate(10deg);
+        }
+        
+        .stat-icon-primary {
+            background: linear-gradient(135deg, var(--primary), var(--tertiary));
+        }
+        
+        .stat-icon-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+        
+        .stat-icon-warning {
+            background: linear-gradient(135deg, #ffc107, #fd7e14);
+        }
+        
+        .stat-icon-info {
+            background: linear-gradient(135deg, #17a2b8, #0dcaf0);
+        }
+        
+        .stat-content {
+            flex-grow: 1;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover .stat-value {
+            transform: scale(1.1);
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 0;
+        }
+        
+        .version-selector {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            max-width: 100%;
+            margin: 15px 0;
+            border: 1px solid rgba(0,0,0,0.08);
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        
+        .version-selector-title {
+            color: #334155;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            position: relative;
+            padding-bottom: 8px;
+        }
+        
+        .version-selector-title:after {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--tertiary));
+            bottom: 0;
+            left: 0;
+            border-radius: 2px;
+            animation: widthGrow 1s ease-out forwards;
+        }
+        
+        .custom-radio-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .custom-radio-btn {
+            opacity: 0;
+            position: absolute;
+        }
+        
+        .custom-radio-label {
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #dee2e6;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--gray);
+            min-width: 120px;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        
+        .custom-radio-btn:checked + .custom-radio-label {
+            border-color: var(--primary);
+            background-color: rgba(0, 105, 217, 0.1);
+            color: var(--primary);
+            box-shadow: 0 3px 10px rgba(0, 105, 217, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .custom-radio-label:hover {
+            border-color: #adb5bd;
+            transform: translateY(-1px);
+        }
+        
+        .custom-radio-label i {
+            margin-right: 8px;
+        }
+        
+        footer {
+            background-color: white;
+            padding: 20px 0;
+            text-align: center;
+            box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.05);
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+        }
+        
+        .footer-text {
+            color: var(--gray);
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 5px rgba(66, 133, 244, 0.2);
+            }
+            to {
+                box-shadow: 0 0 20px rgba(66, 133, 244, 0.6);
+            }
+        }
+        
+        @keyframes widthGrow {
+            from { width: 0; }
+            to { width: 60px; }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes slideInFromBottom {
+            0% {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Add animated transitions for page elements */
+        .animate-slide-up {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .animate-slide-right {
+            animation: fadeInRight 0.6s ease forwards;
+        }
+        
+        .animate-slide-left {
+            animation: fadeInLeft 0.6s ease forwards;
+        }
+        
+        .animate-bounce {
+            animation: bounce 2s infinite;
+        }
+        
+        /* Staggered animations */
+        .stats-row .stat-card:nth-child(1) {
+            animation-delay: 0.1s;
+        }
+        
+        .stats-row .stat-card:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .stats-row .stat-card:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+        
+        .stats-row .stat-card:nth-child(4) {
+            animation-delay: 0.4s;
+        }
+        
+        /* Improved button interactions */
+        .btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: -100%;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            transition: all 0.6s ease;
+        }
+        
+        .btn:hover::after {
+            left: 100%;
+        }
+        
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .main-container {
+                padding: 30px 15px;
+            }
+            
+            .stat-card {
+                min-width: calc(50% - 10px);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 20px;
+            }
+            
+            .file-upload-area {
+                min-height: 180px;
+                padding: 20px;
+            }
+            
+            .upload-icon {
+                font-size: 50px;
+            }
+            
+            .upload-text {
+                font-size: 16px;
+            }
+            
+            .select-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .form-select {
+                width: 100%;
+                min-width: auto;
+            }
+            
+            .action-bar {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .btn-primary-gradient, .btn-outline-primary, .btn-warning {
+                width: 100%;
+            }
+            
+            .stat-card {
+                min-width: 100%;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .selected-file-name {
+                max-width: 200px;
+            }
+            
+            .table-responsive {
+                border-radius: var(--border-radius);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-file-excel me-2"></i>Enterprise Excel Manager
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{% url 'dashboard' %}"><i class="fas fa-home me-1"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-history me-1"></i> History</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-cog me-1"></i> Settings</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#"><i class="fas fa-question-circle me-1"></i> Help</a>
+                    </li>
+                </ul>
+                </div>
+            </form>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <div class="dashboard-header animate__animated animate__fadeIn">
+            <h1 class="section-title">Excel Management Dashboard</h1>
+            <p class="text-muted">Upload, process, and analyze your Excel files efficiently</p>
+        </div>
+
+        <div class="stats-container animate__animated animate__fadeIn animate__delay-1s">
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-primary">
+                        <i class="fas fa-file-excel"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value" id="totalFiles">12</h3>
+                        <p class="stat-label">Total Files</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value" id="processedFiles">10</h3>
+                        <p class="stat-label">Processed</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-warning">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value" id="pendingFiles">2</h3>
+                        <p class="stat-label">Pending</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon stat-icon-info">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-value" id="totalAnalyses">8</h3>
+                        <p class="stat-label">Analyses</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card upload-card animate__animated animate__fadeIn animate__delay-1s">
+                    <div class="card-header">
+                        <i class="fas fa-cloud-upload-alt me-2"></i> Excel File Upload
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="uploadForm" enctype="multipart/form-data" action="{% url 'upload_excel' %}">
+                            {% csrf_token %}
+                            
+                            <!-- Folder Name Input -->
+                            <div class="folder-input">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="folderName" name="folder_name" placeholder="Enter folder name" required>
+                                    <label for="folderName">Folder Name</label>
+                                </div>
+                            </div>
+        
+                            <!-- File Upload Area (Drag & Drop) -->
+                            <div class="file-upload-area" id="dropZone">
+                                <i class="fas fa-cloud-upload-alt upload-icon animate__animated animate__pulse animate__infinite animate__slow"></i>
+                                <h4 class="upload-text">Drag & Drop your Excel file here</h4>
+                                <p class="upload-subtext">or <span class="text-primary fw-bold">browse</span> to upload</p>
+                                <p class="upload-subtext text-muted">Supports: .xls, .xlsx files</p>
+                                <input type="file" id="fileInput" name="file" accept=".xls,.xlsx" />
+                            </div>
+        
+                            <!-- Display the selected file -->
+                            <div class="selected-file" id="selectedFile" style="display:none;">
+                                <i class="fas fa-file-excel selected-file-icon"></i>
+                                <span class="selected-file-name" id="selectedFileName"></span>
+                                <i class="fas fa-times-circle remove-file" id="removeFile"></i>
+                            </div>
+        
+                            <!-- Upload Button -->
+                                 <div class="text-center mt-4">
+                                    <button type="submit" class="btn btn-warning">
+                                        <i class="fas fa-filter me-1"></i> Upload File
+                                    </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div> 
+
+<!-- Folder Dropdown Filter -->
+<form method="get" action="{% url 'upload_excel' %}" class="mb-3">
+    <label for="folderDropdown" class="form-label">Select Folder to View Files</label>
+    <div class="d-flex gap-2">
+        <select name="folder" id="folderDropdown" class="form-select" style="max-width: 300px;" required>
+            <option value="">-- Choose Folder --</option>
+            {% for folder in folder_names %}
+                <option value="{{ folder }}" {% if folder == selected_folder_name %}selected{% endif %}>{{ folder }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary">View Files</button>
+    </div>
+</form>
+
+
+<!-- Folder Display Section -->
+{% if selected_folder_uploads %}
+<div class="card mb-4">
+    <div class="card-header fw-bold">{{ selected_folder_name }}</div>
+    <div class="card-body p-0">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Uploaded_by</th>
+                    <th>File Name</th>
+                    <th>Folder Name</th>
+                    <th>Date Uploaded</th>
+                    <th>Time Uploaded</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for upload in selected_folder_uploads %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ upload.uploaded_by }}</td>
+                    <td>{{ upload.file_name }}</td>
+                    <td>{{ upload.folder_name }}</td>
+                    <td>{{ upload.timestamp|date:"m/d/Y" }}</td>
+                    <td>{{ upload.timestamp|time:"H:i:s" }}</td>
+                    <td>
+                        <span class="badge bg-success">
+                            {{ upload.status|default:"Processed" }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions">
+                            {% if upload.stored_excel %}
+                            <a href="{% url 'view_excel_sheet' upload.stored_excel.id %}" class="btn btn-sm btn-primary" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% else %}
+                            <span class="btn btn-sm btn-secondary disabled" title="View Unavailable">
+                                <i class="fas fa-eye-slash"></i>
+                            </span>
+                            {% endif %}
+                            <a href="{% url 'download_file' upload.id %}" class="btn btn-sm btn-success" title="Download">
+                                <i class="fas fa-download"></i>
+                            </a>
+                            <a href="{% url 'delete_file' upload.id %}" class="btn btn-sm btn-danger" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- File Results Section -->
+<div id="folderFilesContainer" class="stored-data"></div>
+
+<!-- Recent Uploads Section -->   
+<div class="recent-uploads animated fadeIn delay-3s">
+    <div class="recent-uploads-heading d-flex justify-content-between align-items-center mb-3">
+        <h2 class="section-title">Recent Uploads</h2>
+        <div class="dropdown">
+            <ul class="dropdown-menu" aria-labelledby="recentUploadsDropdown">
+                {% for folder_name, uploads in stored_data.items %}
+                    <li><a class="dropdown-item" href="#{{ folder_name|slugify }}">{{ folder_name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>           
+        <div class="uploads-table">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Uploaded_by</th>
+                            <th>File Name</th>
+                            <th>Folder Name</th>
+                            <th>Date Uploaded</th>
+                            <th>Time Uploaded</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for upload in uploaded_files %}
+<tr>
+    <td>{{ forloop.counter }}</td>
+    <td>{{ upload.uploaded_by }}</td>
+    <td>{{ upload.file_name }}</td>
+    <td>{{ upload.folder_name }}</td>
+    <td>{{ upload.timestamp|date:"m/d/Y" }}</td> <!-- Upload Date -->
+    <td>{{ upload.timestamp|time:"H:i:s" }}</td> <!-- Exact Upload Time -->
+    <td>
+        <span class="badge bg-success">
+            {{ upload.status|default:"Processed" }}
+        </span>
+    </td>
+    <td>
+        <div class="table-actions">
+            {% if upload.stored_excel %}
+                <a href="{% url 'view_excel_sheet' upload.stored_excel.id %}" class="btn btn-sm btn-primary" title="View">
+                <i class="fas fa-eye"></i>
+                 </a>
+            {% else %}
+                <span class="btn btn-sm btn-secondary disabled" title="View Unavailable">
+                <i class="fas fa-eye-slash"></i>
+                 </span>
+            {% endif %}
+            <a href="{% url 'download_file' upload.id %}" class="btn btn-sm btn-success" title="Download">
+                <i class="fas fa-download"></i>
+            </a>
+            <a href="{% url 'delete_file' upload.id %}" class="btn btn-sm btn-danger" title="Delete">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="text-center">No uploads found.</td>
+</tr>
+{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="loading-text" id="loadingText">Uploading file...</p>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+    </div>
+
+    <!-- Alert Container -->
+    <div class="alert-container" id="alertContainer">
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle alert-icon"></i>
+            <span id="alertMessage">File uploaded successfully!</span>
+        </div>
+    </div>
+
+    {% if messages %}
+  <div class="container mt-2">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <i class="fas fa-info-circle me-2"></i> {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{{ stored_data_json|json_script:"stored-data-json" }}
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const selectedFile = document.getElementById('selectedFile');
+            const selectedFileName = document.getElementById('selectedFileName');
+            const removeFile = document.getElementById('removeFile');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadForm = document.getElementById('uploadForm');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const progressBar = document.getElementById('progressBar');
+            const loadingText = document.getElementById('loadingText');
+            const alertContainer = document.getElementById('alertContainer');
+            const alertMessage = document.getElementById('alertMessage');
+            
+            // Drag and drop functionality
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+        
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+            });
+        
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+            });
+        
+            dropZone.addEventListener('drop', handleDrop, false);
+        
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                fileInput.files = files;
+                handleFiles(files);
+            }
+        
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files.length) {
+                    handleFiles(this.files);
+                }
+            });
+        
+            function handleFiles(files) {
+                if (files.length) {
+                    const file = files[0];
+                    validateFile(file);
+                }
+            }
+        
+            function validateFile(file) {
+                const validExtensions = ['.xls', '.xlsx'];
+                const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        
+                if (!validExtensions.includes(fileExt)) {
+                    showAlert('Invalid file type. Please select an Excel file (.xls or .xlsx).', 'danger');
+                    return;
+                }
+        
+                displayFileInfo(file);
+                uploadBtn.disabled = false;
+            }
+        
+            function displayFileInfo(file) {
+                selectedFileName.textContent = file.name;
+                selectedFile.style.display = 'flex';
+                selectedFile.classList.add('animate__animated', 'animate__fadeInUp');
+                setTimeout(() => {
+                    selectedFile.classList.remove('animate__animated', 'animate__fadeInUp');
+                }, 1000);
+            }
+        
+            removeFile.addEventListener('click', function() {
+                fileInput.value = '';
+                selectedFile.style.display = 'none';
+                uploadBtn.disabled = true;
+            });
+        
+            function showAlert(message, type) {
+                alertMessage.textContent = message;
+                alertContainer.querySelector('.alert').className = `alert alert-${type}`;
+                alertContainer.querySelector('.alert-icon').className = `fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} alert-icon`;
+                alertContainer.classList.add('show');
+                setTimeout(() => {
+                    alertContainer.classList.remove('show');
+                }, 5000);
+            }
+        
+            function updateStats() {
+                const totalFiles = document.getElementById('totalFiles');
+                const processedFiles = document.getElementById('processedFiles');
+                totalFiles.textContent = parseInt(totalFiles.textContent) + 1;
+                processedFiles.textContent = parseInt(processedFiles.textContent) + 1;
+                totalFiles.classList.add('animate__animated', 'animate__pulse');
+                processedFiles.classList.add('animate__animated', 'animate__pulse');
+                setTimeout(() => {
+                    totalFiles.classList.remove('animate__animated', 'animate__pulse');
+                    processedFiles.classList.remove('animate__animated', 'animate__pulse');
+                }, 1000);
+            }
+        
+            function addFileToTable(file, folderName) {
+                const tbody = document.querySelector('.table tbody');
+                const rowCount = tbody.rows.length;
+                const now = new Date();
+                const dateStr = `${now.getMonth()+1}/${now.getDate()}/${now.getFullYear()}`;
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${rowCount + 1}</td>
+                    <td>${file.name}</td>
+                    <td>${folderName}</td>
+                    <td>${dateStr}</td>
+                    <td><span class="status-badge status-badge-success">Processed</span></td>
+                    <td>
+                        <div class="table-actions">
+                            <a href="#" class="action-btn action-btn-view"><i class="fas fa-eye"></i></a>
+                            <a href="#" class="action-btn action-btn-download"><i class="fas fa-download"></i></a>
+                            <a href="#" class="action-btn action-btn-delete"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </td>
+                `;
+                tbody.prepend(newRow);
+            }
+        });
+        document.addEventListener("DOMContentLoaded", function () {
+    const forms = document.querySelectorAll('.dmt-form');
+
+    forms.forEach(function(form) {
+        form.addEventListener("submit", function () {
+            const button = form.querySelector('button[type="submit"]');
+            const spinner = button.querySelector('.spinner-border');
+            const btnText = button.querySelector('.btn-text');
+
+            // Disable button and show spinner
+            button.disabled = true;
+            spinner.classList.remove('d-none');
+            btnText.textContent = "Processing...";
+        });
+    });
+});
+
+</script>
+</body>
+</html>

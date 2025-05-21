@@ -1,0 +1,194 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Macro Conversion</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #5C6BC0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUp 0.5s ease forwards;
+        }
+
+        @keyframes slideUp {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-section-header {
+            color: #333;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-floating {
+            margin-bottom: 1rem;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+        }
+
+        .btn-login {
+            background: var(--primary-color);
+            border: none;
+            padding: 0.8rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            background: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background: #ff5b5b;
+            color: white;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .brand-logo img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="brand-logo">
+                <img src="{% static 'Macro/images/logo.png' %}" alt="Logo" class="img-fluid">
+            </div>
+            <h1>Welcome Back</h1>
+            <p class="text-muted">Please login to your account</p>
+        </div>
+
+        <form method="post" class="animate__animated animate__fadeIn">
+            {% csrf_token %}
+
+            <div class="form-section">
+                <div class="form-section-header">Account Information</div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
+                    <label for="username">Username</label>
+                </div>
+
+                <div class="form-floating mb-4">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password">Password</label>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-header">Options</div>
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">Remember me</label>
+                    </div>
+                    <p class="text-center mt-3">
+                        <a href="{% url 'forgot_password' %}" class="text-primary">Forgot Password?</a>
+                    </p>  
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-login btn-primary w-100 mb-3">
+                Login
+            </button>
+
+            <p class="text-center mb-0">
+                Don't have an account? <a href={%url 'signup'%} class="text-primary text-decoration-none">Sign up</a>
+            </p>
+
+            {% if error %}
+            <div class="error-message text-center mt-3">
+                {{ error }}
+            </div>
+            {% endif %}
+        </form>
+
+        {% if user.is_staff %}
+        <div class="text-center mt-3">
+            <a href="/admin/" class="btn btn-secondary w-100">Go to Admin Panel</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.cookie.includes('remember_username')) {
+                let autofill = confirm("Would you like to autofill your credentials?");
+                if (autofill) {
+                    document.getElementById("username").value = getCookie("remember_username");
+                    document.getElementById("password").value = getCookie("remember_password");
+                }
+            }
+        });
+    
+        function getCookie(name) {
+            let cookies = document.cookie.split("; ");
+            for (let i = 0; i < cookies.length; i++) {
+                let parts = cookies[i].split("=");
+                if (parts[0] === name) return decodeURIComponent(parts[1]);
+            }
+            return "";
+        }
+    </script>
+</body>
+</html>
+
+
+

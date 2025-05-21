@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Sheet Preview - {{ stored_excel.folder_name }}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Animate.css for animations -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .preview-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 0;
+            margin-bottom: 3rem;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 8px 8px 0 0 !important;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-container {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        table thead th {
+            background-color: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+        
+        table tbody tr:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+        
+        .btn-custom {
+            background-color: var(--secondary-color);
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 50px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            padding: 1rem 0;
+            background-color: #f1f1f1;
+            text-align: center;
+        }
+        
+        .actions-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .file-info {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .file-info i {
+            margin-right: 0.5rem;
+        }
+        
+        .page-title {
+            font-weight: 600;
+            margin-bottom: 0;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        /* Animation for rows */
+        .row-animate {
+            animation-duration: 0.3s;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .actions-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .actions-container .btn-group {
+                margin-top: 1rem;
+                align-self: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header animate__animated animate__fadeIn">
+        <div class="container">
+            <h1 class="page-title">Excel Sheet Preview</h1>
+            <p class="mb-0 mt-2 text-light">Viewing: {{ stored_excel.folder_name }}</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Actions and Information -->
+        <div class="actions-container animate__animated animate__fadeIn">
+            <div class="file-info">
+                <p class="mb-1"><i class="fas fa-file-excel"></i> File: <strong>{{ stored_excel.folder_name }}</strong></p>
+                <p class="mb-0"><i class="fas fa-calendar-alt"></i> Uploaded: <span id="uploadDate">{{ stored_excel.uploaded_at|date:"F j, Y" }}</span></p>
+            </div>
+        </div>
+
+        <!-- Run DMT Filter Button Form -->
+<a href="{% url 'dmt_results_prompt' stored_excel.id %}" class="btn btn-warning me-2">
+    <i class="fas fa-filter me-2"></i>Filtering Process
+</a>
+
+    </div>
+</div>
+
+        
+        <!-- Excel Data Preview -->
+       <div class="preview-container" id="previewContainer">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Data Preview</h5>
+        <div class="btn-group">
+            <button class="btn btn-sm btn-light" id="fullscreenBtn">
+                <i class="fas fa-expand-arrows-alt"></i>
+            </button>
+            <button class="btn btn-sm btn-light" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+    </div>
+
+    {% if sheet_names|length > 1 %}
+        <div class="btn-group my-3">
+            {% for sheet in sheet_names %}
+                <a href="?sheet={{ sheet }}" class="btn {% if sheet == selected_sheet %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                    {{ sheet }}
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Sheet Name Header -->
+    {% if selected_sheet %}
+        <h6 class="text-muted mb-3">Currently viewing: <strong>{{ selected_sheet }}</strong></h6>
+    {% endif %}
+
+<div class="table-container mt-3">
+    {% if table_html %}
+    {{ table_html|safe }}
+    {% else %}
+        <div class="alert alert-warning text-center" role="alert">
+            The selected sheet <strong>{{ selected_sheet }}</strong> has no data to display.
+        </div>
+    {% endif %}
+</div>
+
+    <div class="d-flex justify-content-center align-items-center" style="height: 10vh;">
+        <a href="{% url 'upload_excel' %}" class="btn btn-secondary shadow-sm rounded-pill px-4 py-2 animate__animated animate__fadeInUp">
+            <i class="fas fa-arrow-left me-2"></i> Back to Uploads
+        </a>
+    </div>
+</div>
+
+
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Remove loading overlay
+        setTimeout(function() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(function() {
+                    overlay.style.display = 'none';
+                }, 500);
+            }
+        }, 800);
+
+        // Animate the preview container
+        setTimeout(function() {
+            const previewContainer = document.getElementById('previewContainer');
+            if (previewContainer) {
+                previewContainer.style.opacity = '1';
+                previewContainer.style.transform = 'translateY(0)';
+            }
+        }, 300);
+
+        // Animate table rows on load
+        const tableRows = document.querySelectorAll('tbody tr');
+        tableRows.forEach((row, index) => {
+            row.classList.add('animate__animated', 'animate__fadeInUp', 'row-animate');
+            row.style.animationDelay = (index * 0.05) + 's';
+        });
+
+        // Export button
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                const alertHTML = `
+                    <div class="alert alert-success alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                        <i class="fas fa-check-circle me-2"></i> Export started! Your file will download shortly.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                const alertContainer = document.createElement('div');
+                alertContainer.innerHTML = alertHTML;
+                document.querySelector('.actions-container')?.after(alertContainer);
+
+                setTimeout(function() {
+                    alertContainer.querySelector('.alert').classList.add('animate__fadeOut');
+                    setTimeout(function() {
+                        alertContainer.remove();
+                    }, 1000);
+                }, 3000);
+            });
+        }
+
+        // Refresh button
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (icon) {
+                    icon.classList.add('fa-spin');
+                    setTimeout(() => {
+                        icon.classList.remove('fa-spin');
+                    }, 1000);
+                }
+            });
+        }
+
+        // Fullscreen button
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', function() {
+                const previewContainer = document.getElementById('previewContainer');
+                if (!previewContainer) return;
+
+                if (!document.fullscreenElement) {
+                    if (previewContainer.requestFullscreen) {
+                        previewContainer.requestFullscreen();
+                    } else if (previewContainer.mozRequestFullScreen) {
+                        previewContainer.mozRequestFullScreen();
+                    } else if (previewContainer.webkitRequestFullscreen) {
+                        previewContainer.webkitRequestFullscreen();
+                    } else if (previewContainer.msRequestFullscreen) {
+                        previewContainer.msRequestFullscreen();
+                    }
+                    this.innerHTML = '<i class="fas fa-compress-arrows-alt"></i>';
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                    this.innerHTML = '<i class="fas fa-expand-arrows-alt"></i>';
+                }
+            });
+        }
+
+        // Apply table styling
+        const table = document.querySelector('table');
+        if (table) {
+            table.classList.add('table', 'table-striped', 'table-hover', 'table-bordered');
+        }
+
+        // Set current date
+        const now = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        const uploadDateElement = document.getElementById('uploadDate');
+        if (uploadDateElement) {
+            uploadDateElement.textContent = now.toLocaleDateString('en-US', options);
+        }
+    });
+</script>
+
+</body>
+</html>

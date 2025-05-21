@@ -1,0 +1,254 @@
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMT Filter Selection</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- AOS for animations -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1e88e5;
+            --secondary-color: #f5f9ff;
+            --accent-color: #0d47a1;
+            --success-color: #43a047;
+            --light-text: #6c757d;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: none;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-bottom: none;
+            padding: 25px;
+        }
+        
+        .card-title {
+            margin-bottom: 0;
+            font-weight: 600;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            padding: 10px 15px;
+            background-color: var(--secondary-color);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .file-icon {
+            margin-right: 15px;
+            color: var(--primary-color);
+            font-size: 24px;
+        }
+        
+        .select-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        
+        .form-select {
+            height: 55px;
+            border-radius: 8px;
+            font-size: 16px;
+            box-shadow: none;
+            border: 2px solid #e9ecef;
+            cursor: pointer;
+            padding-left: 15px;
+            transition: all 0.3s;
+        }
+        
+        .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(30, 136, 229, 0.25);
+        }
+        
+        .form-label {
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        
+        .btn-primary {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            background: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 71, 161, 0.3);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+        
+        .version-icon {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        
+        .page-title {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .page-title::after {
+            content: '';
+            position: absolute;
+            width: 50px;
+            height: 3px;
+            background-color: white;
+            bottom: -10px;
+            left: 0;
+        }
+        
+        .actions {
+            margin-top: 30px;
+        }
+        
+        .btn-icon {
+            margin-right: 8px;
+        }
+        
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        
+        @keyframes pulse-animation {
+            0% {
+                box-shadow: 0 0 0 0 rgba(30, 136, 229, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(30, 136, 229, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(30, 136, 229, 0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card" data-aos="fade-up" data-aos-duration="800">
+                    <div class="card-header">
+                        <h2 class="card-title page-title">
+                            <i class="fas fa-filter me-2"></i>DMT Filter Version
+                        </h2>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="file-info mb-4" data-aos="fade-right" data-aos-delay="200">
+                            <i class="fas fa-file-excel file-icon"></i>
+                            <div>
+                                <div class="text-muted small">Selected File</div>
+                                <div class="fw-bold">{{ upload.folder_name }}</div>
+                            </div>
+                        </div>
+                        
+                        <form method="post" action="" id="versionForm">
+                            {% csrf_token %}
+                            <div class="select-container" data-aos="fade-up" data-aos-delay="300">
+                                <label for="version_choice" class="form-label">
+                                    <i class="fas fa-code-branch me-2"></i>Choose version:
+                                </label>
+                                <select name="version_choice" id="version_choice" class="form-select" required>
+                                    <option value="" disabled selected>Select a version</option>
+                                    <option value="latest"><i class="fas fa-arrow-up"></i> Latest Version</option>
+                                    <option value="oldest"><i class="fas fa-history"></i> Oldest Version</option>
+                                    <option value="all"><i class="fas fa-list-ul"></i> All Versions</option>
+                                </select>
+                                {% for message in messages %}
+                                <div class="alert alert-warning">{{ message }}</div>
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="actions d-flex gap-2" data-aos="fade-up" data-aos-delay="400">
+                                <button type="submit" class="btn btn-primary pulse">
+                                    <i class="fas fa-play btn-icon"></i>Run Filter
+                                </button>
+                                <a href="{% url 'upload_excel' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times btn-icon"></i>Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <!-- AOS Animation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <script>
+        // Initialize AOS animations
+        document.addEventListener('DOMContentLoaded', function() {
+            AOS.init();
+            
+            // Add icons to select options (since they don't render in options by default)
+            const versionSelect = document.getElementById('version_choice');
+            
+            versionSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex].value;
+                
+                // Remove pulse animation from button if an option is selected
+                if (selectedOption) {
+                    document.querySelector('.btn-primary').classList.remove('pulse');
+                }
+            });
+            
+            // Add a subtle highlight effect on form elements when focused
+            const formElements = document.querySelectorAll('.form-select, .btn');
+            formElements.forEach(element => {
+                element.addEventListener('mouseover', function() {
+                    this.style.transition = 'all 0.3s';
+                    this.style.transform = 'translateY(-2px)';
+                });
+                
+                element.addEventListener('mouseout', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+{% endblock %}

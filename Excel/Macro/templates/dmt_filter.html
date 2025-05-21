@@ -1,0 +1,14 @@
+<h2>DMT Filter Results</h2>
+
+{% if download_ready %}
+    <a href="{% url 'download_filtered_excel' %}" class="btn btn-success mb-3">
+        Download Filtered Excel ({{ filtered_filename }})
+    </a>
+
+    {% for sheet, table_html in tables_html.items %}
+        <h3>{{ sheet }}</h3>
+        {{ table_html|safe }}
+    {% endfor %}
+{% else %}
+    <p>No filtered file available yet.</p>
+{% endif %}

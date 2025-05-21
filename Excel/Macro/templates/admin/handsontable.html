@@ -1,0 +1,111 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+
+<!-- Handsontable CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
+<script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
+
+<style>
+  #handsontable-container {
+      width: 100%;
+      height: 400px;
+      overflow: auto;
+  }
+  .button-container {
+      margin-top: 10px;
+  }
+</style>
+
+<!-- Handsontable UI -->
+<div id="handsontable-container"></div>
+
+<!-- Buttons for Actions -->
+<div class="button-container">
+    <button id="saveData">Save Data</button>
+    <input type="file" id="fileInput" />
+    <button id="validateFiles">Validate Files</button>
+    <button id="storeFiles">Store Files in Local</button>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+      const container = document.getElementById("handsontable-container");
+      const hot = new Handsontable(container, {
+          data: {{ data|safe }}
+          colHeaders: ["Configuration Type", "Configuration Name", "HRL Available?", "File Name is correct", "Exported", "Imported"],
+          columns: [
+              { type: "text" },
+              { type: "text" },
+              { type: "checkbox" },
+              { type: "checkbox" },
+              { type: "checkbox" },
+              { type: "checkbox" }
+          ],
+          rowHeaders: true,
+          filters: true,
+          dropdownMenu: true,
+          licenseKey: "non-commercial-and-evaluation"
+      });
+
+      // Save Data Button
+      document.getElementById("saveData").addEventListener("click", function () {
+          fetch("{% url 'save_excel_data' %}", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ business_approved_list: hot.getData() })
+          }).then(response => response.json())
+            .then(data => alert(data.message || "Data saved successfully!"))
+            .catch(error => console.error("Error:", error));
+      });
+
+      // Validate Files Button
+      document.getElementById("validateFiles").addEventListener("click", function () {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+    
+        if (!file) {
+            alert("Please select a file!");
+            return;
+        }
+    
+        const formData = new FormData();
+        formData.append("file", file);
+    
+        fetch("{% url 'validate_files' %}", {  // Ensure correct URL name
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message || "File validated successfully!");
+        })
+        .catch(error => console.error("Error:", error));
+    });
+
+      // Store Files Button
+      document.getElementById("storeFiles").addEventListener("click", function () {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+    
+        if (!file) {
+            alert("Please select a file!");
+            return;
+        }
+    
+        const formData = new FormData();
+        formData.append("file", file);
+    
+        fetch("{% url 'store_files' %}", {  // Ensure correct URL name
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message || "File stored successfully!");
+        })
+        .catch(error => console.error("Error:", error));
+    });
+  
+</script>
+
+{% endblock %}
