@@ -347,34 +347,7 @@
             <button id="save-btn" class="btn btn-success mt-3">Save Data</button>
             <button id="new-file-btn" class="btn btn-danger mt-3">Generate New File</button>
         </div>
-        
-
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                const container = document.getElementById("excel-table");
-                let hot;
-        
-                function loadExcelData() {
-                    fetch("{% url 'load_excel' %}")
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) {
-                                alert("No Excel data found. Please generate a new file.");
-                            } else {
-                                if (!hot) {
-                                    hot = new Handsontable(container, {
-                                        data: data.data,
-                                        rowHeaders: true,
-                                        colHeaders: true,
-                                        licenseKey: "non-commercial-and-evaluation"
-                                    });
-                                } else {
-                                    hot.loadData(data.data);
-                                }
-                            }
-                        });
-                }    
-        </script>
-              
+                    
 </body>
 </html>
+

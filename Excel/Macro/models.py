@@ -33,11 +33,13 @@ class StoredExcel(models.Model):
         return f"Excel File in {self.folder_name} by {self.user.username}"
 
 
+
+
+
 class UploadedExcel(models.Model):
     folder_name = models.CharField(max_length=255)
     excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/%H-%M-%S/', blank=True, null=True)
     file_name = models.CharField(max_length=255)
-    excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/')
     uploaded_at = models.DateTimeField(default=datetime.now)
     timestamp = models.DateTimeField(default=now)
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)

@@ -304,13 +304,14 @@ def upload_excel(request):
 
             json_data = {}
             for sheet_name, df in excel_data.items():
-                # if df.columns.any():  # Keep sheets even if they have only headers
-                   df_cleaned = df.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
-                   json_data[sheet_name] = {
-    "columns": list(df_cleaned.columns),
-    "data": df_cleaned.to_dict(orient="records")
-}
-
+                # Drop Unnamed columns
+                    df_cleaned = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+                    # Replace NaN, NaT, etc.
+                    df_cleaned = df_cleaned.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
+                    json_data[sheet_name] = {
+        "columns": list(df_cleaned.columns),
+        "data": df_cleaned.to_dict(orient="records")
+    }
             def clean_json(data):
                 if isinstance(data, dict):
                     return {k: clean_json(v) for k, v in data.items()}
@@ -323,12 +324,12 @@ def upload_excel(request):
 
             cleaned_data = clean_json(json_data)
             safe_json = json.dumps(cleaned_data, default=str)
-            parsed_data = json.loads(safe_json)
+            
 
             stored_excel = StoredExcel.objects.create(
                 user=request.user,
                 folder_name=folder_name,
-                data=parsed_data
+                data=safe_json
             )
 
             UploadedExcel.objects.create(
@@ -420,7 +421,9 @@ def view_excel_sheet(request, stored_excel_id):
             table_html = df.to_html(classes="table table-bordered table-striped", index=False)
         else:
             table_html = "<p class='text-danger'>The selected sheet has no headers or data.</p>"
-    
+    print("📄 Sheets available:", sheet_names)
+    print("✅ Selected sheet:", selected_sheet)
+    print("📦 Sheet data keys:", list(sheet_data.keys()) if isinstance(sheet_data, dict) else "N/A")
     return render(request, "view_excel_sheet.html", {
         "table_html": table_html,
         "stored_excel": stored_excel,
