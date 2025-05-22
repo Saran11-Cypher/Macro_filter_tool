@@ -2,14 +2,18 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.files.base import ContentFile
+from datetime import datetime
+from django.core.files.storage import default_storage
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import os, random,json, xlrd, math
 from .utils import process_hrl_files
+from .utils import is_file_locked
 from django.core.files import File
 from io import BytesIO
 import pandas as pd
-import shutil,os, re
+import shutil,os, re, traceback, ntpath
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.http import JsonResponse
@@ -21,6 +25,8 @@ from django.shortcuts import render, get_object_or_404
 from .forms import ExcelUploadForm
 from django.utils.timezone import now
 from django.http import FileResponse, Http404, HttpResponse
+from Macro.models import UploadedExcel
+from Macro.utils import process_hrl_files, is_file_locked, safe_create_folder
 # Function to check if user is admin
 def is_admin(user):
     return user.is_superuser  # Only allow superusers
@@ -332,7 +338,7 @@ def upload_excel(request):
                 data=safe_json
             )
 
-            UploadedExcel.objects.create(
+            new_upload = UploadedExcel.objects.create(
                 excel_file=uploaded_file,
                 uploaded_by=request.user,
                 folder_name=folder_name,
@@ -384,18 +390,22 @@ def upload_excel(request):
         "selected_file_id": selected_file_id,    
     })
 
+
 @login_required
 def view_excel_sheet(request, stored_excel_id):
     stored_excel = get_object_or_404(StoredExcel, id=stored_excel_id, user=request.user)
 
-    # Load and normalize data from JSONField
+    # ✅ Safely parse JSON only if it's a string
     sheet_data = stored_excel.data
     if isinstance(sheet_data, str):
         try:
             sheet_data = json.loads(sheet_data)
         except json.JSONDecodeError:
-            print(f"Invalid JSON for StoredExcel {stored_excel_id}")
+            print(f"❌ Invalid JSON in StoredExcel {stored_excel_id}")
             sheet_data = {}
+    elif not isinstance(sheet_data, dict):
+        print(f"❌ Unexpected type for sheet_data in StoredExcel {stored_excel_id}: {type(sheet_data)}")
+        sheet_data = {}
 
     sheet_names = list(sheet_data.keys()) if isinstance(sheet_data, dict) else []
     selected_sheet = request.GET.get("sheet") or (sheet_names[0] if sheet_names else None)
@@ -404,26 +414,27 @@ def view_excel_sheet(request, stored_excel_id):
 
     if selected_sheet and selected_sheet in sheet_data:
         sheet_content = sheet_data[selected_sheet]
-        
-        # Handle legacy or old format if accidentally stored
+
+        # Handle both old and new formats
         if isinstance(sheet_content, list):
             df = pd.DataFrame(sheet_content)
         else:
-            columns = sheet_content.get("columns", [])
-            data = sheet_content.get("data", [])
+            columns = sheet_content.get("columns") or []
+            data = sheet_content.get("data") or []
             df = pd.DataFrame(data, columns=columns)
 
         if df.empty and list(df.columns):
-            # If only headers exist, display just the header row
             table_html = df.head(0).to_html(classes="table table-bordered table-striped", index=False)
-            table_html = df.to_html(classes="table table-bordered table-striped", index=False)
         elif not df.empty:
             table_html = df.to_html(classes="table table-bordered table-striped", index=False)
         else:
             table_html = "<p class='text-danger'>The selected sheet has no headers or data.</p>"
+
+    # Debug info
     print("📄 Sheets available:", sheet_names)
     print("✅ Selected sheet:", selected_sheet)
     print("📦 Sheet data keys:", list(sheet_data.keys()) if isinstance(sheet_data, dict) else "N/A")
+
     return render(request, "view_excel_sheet.html", {
         "table_html": table_html,
         "stored_excel": stored_excel,
@@ -444,37 +455,45 @@ def view_excel_sheet_redirect(request):
 
 @login_required
 def run_dmt_filtration_view(request, file_id):
-    uploaded_file = get_object_or_404(UploadedExcel, pk=file_id)
+    uploaded_file = get_object_or_404(UploadedExcel, pk=file_id, uploaded_by=request.user)
+
     if not uploaded_file.excel_file:
         messages.error(request, "This uploaded file has no associated Excel file.")
-        return redirect('dmt_results_prompt', file_id=file_id)  # Replace with your actual redirect URL name
+        return redirect('dmt_results_prompt', file_id=file_id)
 
-    # Use correct file path
     input_excel_path = uploaded_file.excel_file.path
-    base_dir = os.path.dirname(input_excel_path)
-
     version_choice = request.GET.get('version', 'all')
     config_root = os.path.join(settings.MEDIA_ROOT, "configs")
 
     try:
-        # Process the file (should return full path of filtered Excel)
+        # ✅ Process the original Excel file and generate filtered output
         result_path = process_hrl_files(input_excel_path, config_root, version_choice)
 
-        # Save new filtered version into DB
-        filtered_filename = f"processed_{os.path.basename(input_excel_path)}"
-        filtered_file_path = os.path.join(base_dir, filtered_filename)
+        # ✅ Build user-specific folder structure
+        folder_name = uploaded_file.folder_name.strip()
+        user_upload_dir = os.path.join('uploads', str(request.user.id), folder_name)
+        full_user_upload_dir = os.path.join(settings.MEDIA_ROOT, user_upload_dir)
+        os.makedirs(full_user_upload_dir, exist_ok=True)
 
+        # ✅ Get filtered filename and destination
+        filtered_filename = os.path.basename(result_path)
+        relative_path = os.path.join(user_upload_dir, filtered_filename)
+
+        # ✅ Save file through Django storage
         with open(result_path, 'rb') as f:
-            new_excel_file = File(f)
-            filtered_instance = UploadedExcel.objects.create(
-                folder_name=uploaded_file.folder_name,
-                file_name=filtered_filename,
-                excel_file=new_excel_file,
-                uploaded_by=uploaded_file.uploaded_by,
-                status='Filtered'
-            )
+            saved_path = default_storage.save(relative_path, File(f))
 
-        # Prepare HTML tables from the filtered file
+        # ✅ Create new UploadedExcel entry
+        filtered_instance = UploadedExcel.objects.create(
+            folder_name=folder_name,
+            file_name=filtered_filename,
+            excel_file=saved_path,
+            uploaded_by=uploaded_file.uploaded_by,
+            status='Filtered',
+            stored_excel=uploaded_file.stored_excel
+        )
+
+        # ✅ Read for preview
         xls = pd.ExcelFile(result_path)
         tables_html = {}
         for sheet_name in xls.sheet_names:
@@ -485,17 +504,24 @@ def run_dmt_filtration_view(request, file_id):
             "download_ready": True,
             "filtered_filename": filtered_filename,
             "tables_html": tables_html,
-            "download_url": filtered_instance.excel_file.url,  # For download button
+            "download_url": filtered_instance.excel_file.url,
         }
         return render(request, "dmt_filter.html", context)
 
     except Exception as e:
+        import traceback
+        print("Traceback:", traceback.format_exc())
         messages.error(request, f"Error during HRL filtration: {str(e)}")
         return redirect("dmt_results_prompt", file_id=file_id)
 
+
 @login_required
 def dmt_results_prompt_view(request, file_id):
-    upload = get_object_or_404(UploadedExcel, id=file_id)
+    try:
+        upload = UploadedExcel.objects.get(id=file_id, uploaded_by=request.user)
+    except UploadedExcel.DoesNotExist:
+        messages.error(request, "The requested Excel file does not exist or you do not have permission to access it.")
+        return redirect("upload_excel")
 
     if request.method == "POST":
         version_choice = request.POST.get("version_choice")
@@ -503,11 +529,12 @@ def dmt_results_prompt_view(request, file_id):
             messages.error(request, "Please select a valid version option.")
             return redirect("dmt_results_prompt", file_id=file_id)
 
-        # Save choice in session for later retrieval
+        # Save the choice in session
         request.session["version_choice"] = version_choice
         request.session["file_id"] = file_id
 
         return redirect("dmt_filtration_handler", file_id=file_id)
+
     return render(request, "dmt_results_prompt.html", {"upload": upload})
 
 @login_required
@@ -552,7 +579,7 @@ def load_excel(request):
 
 def download_file(request, file_id):
     upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)
-    file_path = upload.file.path
+    file_path = upload.excel_file.path
     try:
         return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=upload.file_name)
     except FileNotFoundError:
@@ -560,7 +587,7 @@ def download_file(request, file_id):
 
 def delete_file(request, file_id):
     upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)
-    file_path = upload.file.path
+    file_path = upload.excel_file.path
 
     upload.delete()
     if os.path.exists(file_path):

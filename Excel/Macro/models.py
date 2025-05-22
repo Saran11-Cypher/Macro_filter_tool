@@ -38,7 +38,7 @@ class StoredExcel(models.Model):
 
 class UploadedExcel(models.Model):
     folder_name = models.CharField(max_length=255)
-    excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/%H-%M-%S/', blank=True, null=True)
+    excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/%H-%M-%S/', blank=True, null=True, max_length=1000)
     file_name = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(default=datetime.now)
     timestamp = models.DateTimeField(default=now)
@@ -46,7 +46,8 @@ class UploadedExcel(models.Model):
     status = models.CharField(max_length=50, default='Processed')
     stored_excel = models.ForeignKey(StoredExcel, on_delete=models.CASCADE, null=True, blank=True)
     def __str__(self):
-        return f"{self.file.name} - {self.uploaded_by.username}"
+        return f"{self.excel_file.name} - {self.uploaded_by.username}"
+
 
 
 class ExcelFile(models.Model):
