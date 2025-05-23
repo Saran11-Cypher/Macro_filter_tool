@@ -5,7 +5,7 @@ from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill
 from django.conf import settings
-import os
+import os, re, traceback, shutil
 
 def is_file_locked(filepath):
     if not os.path.exists(filepath):
@@ -15,6 +15,9 @@ def is_file_locked(filepath):
             return False
     except OSError:
         return True
+    
+def trim_suffix(filename):
+    return re.sub(r'\.\d{4}-\d{2}-\d{2}\..*$', '', filename)
 
 def normalize_text(text):
     return re.sub(r'[^a-zA-Z0-9.]', '', str(text)).strip().lower()
@@ -40,6 +43,7 @@ def categorize_files(folder_path):
             else:
                 continue
             normalized = normalize_text(config_name)
+            print(f"🔍 Normalized config name: {normalized}")
             if normalized in single_version_files:
                 multi_version_files[normalized].append(file)
                 multi_version_files[normalized].append(single_version_files.pop(normalized)[0])
@@ -53,34 +57,44 @@ def find_matching_file(config_name, single_version_files, multi_version_files, s
     if "&" in config_name:
         config_name = config_name.replace("&", "and")
     normalized_key = normalize_text(config_name)
+    print(f"🔍 Looking for matches for: {normalized_key} | Version: {selected_version}")
 
     if normalized_key in single_version_files:
+        print(f"✅ Single-version match found: {single_version_files[normalized_key][0]}")
         return [single_version_files[normalized_key][0]]
+
     elif normalized_key in multi_version_files:
         candidates = multi_version_files[normalized_key]
         dated = [(f, extract_date_from_filename(f)) for f in candidates]
         dated.sort(key=lambda x: (x[1] or datetime.min))
+
         if selected_version == 'latest':
+            print(f"✅ Latest version selected: {dated[-1][0]}")
             return [dated[-1][0]]
         elif selected_version == 'oldest':
+            print(f"✅ Oldest version selected: {dated[0][0]}")
             return [dated[0][0]]
         else:
+            print(f"✅ All versions selected: {[f for f, _ in dated]}")
             return [f for f, _ in dated]
+    
+    print("❌ No match found.")
     return []
+
 
 def safe_create_folder(path):
     try:
-        print(f"Checking if file: {os.path.isfile(path)}")
-        print(f"Checking if dir : {os.path.isdir(path)}")
-        print(f"Can write to parent: {os.access(os.path.dirname(path), os.W_OK)}")
+        # print(f"Checking if file: {os.path.isfile(path)}")
+        # print(f"Checking if dir : {os.path.isdir(path)}")
+        # print(f"Can write to parent: {os.access(os.path.dirname(path), os.W_OK)}")
         
         if os.path.exists(path):
             if os.path.isfile(path):
                 raise PermissionError(f"Expected directory but found file: {path}")
-            print(f"Folder already exists: {path}")
+            # print(f"Folder already exists: {path}")
         else:
             os.makedirs(path, exist_ok=True)
-            print(f"Folder created successfully: {path}")
+            # print(f"Folder created successfully: {path}")
     except PermissionError as e:
         print(f"Permission denied error when creating folder: {path}")
         print(traceback.format_exc())
@@ -98,14 +112,12 @@ def find_column_name(headers, target_name):
             return h
     raise ValueError(f"Column '{target_name}' not found")
 
-def process_hrl_files(excel_path, upload_folder, version_choice):
-    from openpyxl import load_workbook
-    from openpyxl.styles import PatternFill
 
+def process_hrl_files(excel_path, upload_folder, version_choice):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
     safe_create_folder(HRL_PARENT_FOLDER)
-
+    print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
     # Load workbook and read sheet
     wb = load_workbook(excel_path)
     ws_main = wb["Main"]
@@ -114,18 +126,13 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
     # Load and clean DataFrame
     df_bal = pd.read_excel(excel_path, sheet_name="Business Approved List", dtype=str)
     df_bal.columns = df_bal.columns.str.strip()
-    df_bal = df_bal.loc[:, ~df_bal.columns.str.contains("^Unnamed", case=False, na=False)]
+    df_bal = df_bal.loc[:, ~df_bal.columns.str.contains("^Unnamed", case=False)]
     df_bal = df_bal.loc[:, ~df_bal.columns.duplicated(keep="first")]
 
     # Remove any duplicate "HRL Available?" columns manually
     hrl_cols = [col for col in df_bal.columns if col.strip().lower() == "hrl available?"]
     if len(hrl_cols) > 1:
         df_bal = df_bal.drop(columns=hrl_cols[1:])  # Keep only first
-
-    # Add missing columns if needed
-    for col in ["HRL Available?", "File Name is correct in Export Sheet", "Exported HRL Path"]:
-        if col not in df_bal.columns:
-            df_bal[col] = ""
 
     # Normalize Config Type
     df_bal["Config Type"] = df_bal["Config Type"].astype(str).apply(normalize_text)
@@ -136,8 +143,14 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
         normalize_text(f): os.path.join(upload_folder, f)
         for f in os.listdir(upload_folder) if os.path.isdir(os.path.join(upload_folder, f))
     }
-    selected_folders = {cfg: path for cfg, path in available_folders.items() if cfg in approved_config_types}
+    print(f"📂 Upload folder content: {os.listdir(upload_folder)}")
+    print(f"📂 Available folders: {available_folders}")
+    print(f"🧽 Normalized folders: {list(available_folders.keys())}")
+    print(f"🔍 Matching against: {approved_config_types}")
+    selected_folders = {k: v for k, v in available_folders.items() if k in approved_config_types}
 
+    print(f"📁 Selected folders: {selected_folders}")
+    print(f"📊 Approved config types: {approved_config_types}")
     config_load_order = [
         "ValueList", "AttributeType", "UserDefinedTerm", "LineOfBusiness", "Product", "ServiceCategory",
         "BenefitNetwork", "NetworkDefinitionComponent", "BenefitPlanComponent", "WrapAroundBenefitPlan",
@@ -159,6 +172,7 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
         for index, row in config_type_rows.iterrows():
             config_name = row["Config Name"]
             if pd.isna(config_name) or not str(config_name).strip():
+                print(f"⚠️ Skipping row {index} due to empty config name")
                 continue
 
             matches = find_matching_file(config_name, single_version_files, multi_version_files, version_choice)
@@ -222,13 +236,8 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
 
     # Save to new Excel path
     filtered_excel_path = os.path.join(HRL_PARENT_FOLDER, os.path.basename(excel_path))
-    print(f"Saving filtered Excel to: {filtered_excel_path}")
+    # print(f"Saving filtered Excel to: {filtered_excel_path}")
     wb.save(filtered_excel_path)
     wb.close()
 
     return filtered_excel_path
-
-
-
-
-

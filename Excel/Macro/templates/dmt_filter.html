@@ -462,10 +462,17 @@
         <p class="mb-0 text-light opacity-75">Advanced Data Management & Filtration System</p>
       </div>
       <div>
-        <button class="btn btn-outline-primary pulse">
-          <i class="fas fa-download me-2"></i>
-          Export Results
-        </button>
+        {% if download_ready %}
+<a href="{% url 'download_filtered_excel' %}" class="btn btn-outline-primary pulse">
+      <i class="fas fa-download me-2"></i>
+      Download Filtered Excel ({{ filtered_filename }})
+      </a>
+      {% else %}
+      <button class="btn btn-outline-primary pulse" disabled>
+      <i class="fas fa-download me-2"></i>
+      Export Results
+      </button>
+      {% endif %}
       </div>
     </div>
   </div>
@@ -524,11 +531,7 @@
     </h4>
     
         <div class="row g-4">
-        {% if download_ready %}
-        <a href="{% url 'download_filtered_excel' %}" class="btn btn-success">
-            Download Filtered Excel ({{ filtered_filename }})
-        </a>
-        {% endif %}
+        
 
         <!-- Replace the tables section with: -->
         {% if download_ready %}

@@ -25,8 +25,7 @@ from django.shortcuts import render, get_object_or_404
 from .forms import ExcelUploadForm
 from django.utils.timezone import now
 from django.http import FileResponse, Http404, HttpResponse
-from Macro.models import UploadedExcel
-from Macro.utils import process_hrl_files, is_file_locked, safe_create_folder
+
 # Function to check if user is admin
 def is_admin(user):
     return user.is_superuser  # Only allow superusers
@@ -462,28 +461,32 @@ def run_dmt_filtration_view(request, file_id):
         return redirect('dmt_results_prompt', file_id=file_id)
 
     input_excel_path = uploaded_file.excel_file.path
-    version_choice = request.GET.get('version', 'all')
-    config_root = os.path.join(settings.MEDIA_ROOT, "configs")
+
+    # ✅ Pull version_choice from session, not GET — session is set in dmt_results_prompt_view
+    version_choice = request.session.get('version_choice', 'all')
+    print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
+
+    config_root = os.path.join(settings.MEDIA_ROOT, "uploads", str(request.user.id), uploaded_file.folder_name)
 
     try:
-        # ✅ Process the original Excel file and generate filtered output
+        # ✅ Perform filtration
         result_path = process_hrl_files(input_excel_path, config_root, version_choice)
 
-        # ✅ Build user-specific folder structure
+        # ✅ Create user-specific folder if needed
         folder_name = uploaded_file.folder_name.strip()
         user_upload_dir = os.path.join('uploads', str(request.user.id), folder_name)
         full_user_upload_dir = os.path.join(settings.MEDIA_ROOT, user_upload_dir)
         os.makedirs(full_user_upload_dir, exist_ok=True)
 
-        # ✅ Get filtered filename and destination
+        # ✅ Determine destination for filtered file
         filtered_filename = os.path.basename(result_path)
         relative_path = os.path.join(user_upload_dir, filtered_filename)
 
-        # ✅ Save file through Django storage
+        # ✅ Save to Django-managed media
         with open(result_path, 'rb') as f:
             saved_path = default_storage.save(relative_path, File(f))
 
-        # ✅ Create new UploadedExcel entry
+        # ✅ Log new UploadedExcel
         filtered_instance = UploadedExcel.objects.create(
             folder_name=folder_name,
             file_name=filtered_filename,
@@ -493,7 +496,7 @@ def run_dmt_filtration_view(request, file_id):
             stored_excel=uploaded_file.stored_excel
         )
 
-        # ✅ Read for preview
+        # ✅ Generate HTML preview of filtered Excel
         xls = pd.ExcelFile(result_path)
         tables_html = {}
         for sheet_name in xls.sheet_names:
@@ -506,15 +509,15 @@ def run_dmt_filtration_view(request, file_id):
             "tables_html": tables_html,
             "download_url": filtered_instance.excel_file.url,
         }
+
         return render(request, "dmt_filter.html", context)
 
     except Exception as e:
-        import traceback
         print("Traceback:", traceback.format_exc())
         messages.error(request, f"Error during HRL filtration: {str(e)}")
         return redirect("dmt_results_prompt", file_id=file_id)
-
-
+    
+    
 @login_required
 def dmt_results_prompt_view(request, file_id):
     try:
@@ -529,13 +532,13 @@ def dmt_results_prompt_view(request, file_id):
             messages.error(request, "Please select a valid version option.")
             return redirect("dmt_results_prompt", file_id=file_id)
 
-        # Save the choice in session
         request.session["version_choice"] = version_choice
         request.session["file_id"] = file_id
 
         return redirect("dmt_filtration_handler", file_id=file_id)
 
     return render(request, "dmt_results_prompt.html", {"upload": upload})
+
 
 @login_required
 def download_filtered_file(request):
