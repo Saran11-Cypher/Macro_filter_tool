@@ -520,6 +520,8 @@ def run_dmt_filtration_view(request, file_id):
     
 @login_required
 def dmt_results_prompt_view(request, file_id):
+    print(f"📦 File ID: {file_id}")
+    print(f"👤 Requesting user: {request.user}")
     try:
         upload = UploadedExcel.objects.get(id=file_id, uploaded_by=request.user)
     except UploadedExcel.DoesNotExist:
@@ -535,7 +537,7 @@ def dmt_results_prompt_view(request, file_id):
         request.session["version_choice"] = version_choice
         request.session["file_id"] = file_id
 
-        return redirect("dmt_filtration_handler", file_id=file_id)
+        return redirect("dmt_filtration_handler", file_id=new_uploaded_file.id)
 
     return render(request, "dmt_results_prompt.html", {"upload": upload})
 
