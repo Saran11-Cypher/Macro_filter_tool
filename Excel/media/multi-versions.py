@@ -8,10 +8,10 @@ from collections import defaultdict
 from openpyxl.styles import PatternFill
 
 # Constants
-EXCEL_FILE = "C:\\Users\\n925072\\Downloads\\MacroFile_Conversion-master\\MacroFile_Conversion-master\\New folder\\convertor\\Macro_Functional_Excel.xlsx"
-UPLOAD_FOLDER = "C:\\1"
+EXCEL_FILE = "D:\\Macro_Functional_Excel.xlsx"
+UPLOAD_FOLDER = "D:\\1"
 DATE_STAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-HRL_PARENT_FOLDER = f"C:\\Datas\\HRLS_{DATE_STAMP}"
+HRL_PARENT_FOLDER = f"D:\\Datas\\HRLS_{DATE_STAMP}"
 
 # Check upload folder
 if not os.path.exists(UPLOAD_FOLDER):
@@ -33,7 +33,7 @@ config_load_order = [
 
 # Helper functions
 def normalize_text(text):
-    return re.sub(r'[^a-zA-Z0-9.]', '', str(text)).strip().lower()
+    return re.sub(r'[^a-zA-Z0-9]', '', str(text)).strip().lower()
 
 def extract_date_from_filename(filename):
     match = re.search(r'\.(\d{4}-\d{2}-\d{2})\.', filename)
@@ -44,6 +44,9 @@ def extract_date_from_filename(filename):
             return None
     return None
 
+
+from collections import defaultdict
+
 def categorize_files(folder_path):
     single_version_files = {}
     multi_version_files = defaultdict(list)
@@ -51,11 +54,20 @@ def categorize_files(folder_path):
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             parts = file.split('.')
-            if len(parts) >= 3:
+
+            # Type 1: Exactly 3 parts — configtype.configname.dateformat.hrl
+            if len(parts) == 4:
                 config_name = parts[1]
+
+            # Type 2: More than 3 parts — configtype.configname.part1.part2...dateformat.hrl
+            elif len(parts) > 4:
+                config_name = '.'.join(parts[1:-3])  # Join all between config type and date
+
             else:
-                continue
+                continue  # Skip invalid files
+
             normalized_config_name = normalize_text(config_name)
+            print(f"🔍 Processing with normalized config name: {normalized_config_name}")
 
             if normalized_config_name in single_version_files:
                 multi_version_files[normalized_config_name].append(file)
@@ -66,6 +78,7 @@ def categorize_files(folder_path):
                 single_version_files[normalized_config_name] = [file]
 
     return single_version_files, multi_version_files
+
 
 # Load and normalize approved list
 df_bal = pd.read_excel(EXCEL_FILE, sheet_name="Business Approved List", dtype=str)
@@ -112,6 +125,7 @@ if not valid_orders.is_monotonic_increasing:
     exit()
 
 df_bal.drop(columns=["Order"], inplace=True)
+
 
 def find_matching_file(config_name, single_version_files, multi_version_files):
     if "&" in config_name:

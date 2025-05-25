@@ -462,6 +462,7 @@ def run_dmt_filtration_view(request, file_id):
 
     input_excel_path = uploaded_file.excel_file.path
 
+
     # ✅ Pull version_choice from session, not GET — session is set in dmt_results_prompt_view
     version_choice = request.session.get('version_choice', 'all')
     print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
@@ -520,11 +521,29 @@ def run_dmt_filtration_view(request, file_id):
     
 @login_required
 def dmt_results_prompt_view(request, file_id):
-    print(f"📦 File ID: {file_id}")
+    print(f"📦 Requested File ID: {file_id}")
     print(f"👤 Requesting user: {request.user}")
+
+    # ✅ Try getting the file; if it doesn't exist, fallback to latest in folder
     try:
-        upload = UploadedExcel.objects.get(id=file_id, uploaded_by=request.user)
+        upload = UploadedExcel.objects.get(id=file_id)
+        if upload.uploaded_by != request.user:
+            messages.error(request, "You do not have permission to access this file.")
+            return redirect("upload_excel")
     except UploadedExcel.DoesNotExist:
+        # Try fallback: get latest file in user's uploads by folder name if session has it
+        folder_name = request.GET.get("folder") or request.session.get("folder_name")
+
+        if folder_name:
+            latest_upload = UploadedExcel.objects.filter(
+                uploaded_by=request.user,
+                folder_name=folder_name
+            ).order_by("-uploaded_at").first()
+
+            if latest_upload:
+                messages.warning(request, "The originally selected file was deleted. Loaded the latest available one.")
+                return redirect("dmt_results_prompt", file_id=latest_upload.id)
+
         messages.error(request, "The requested Excel file does not exist or you do not have permission to access it.")
         return redirect("upload_excel")
 
@@ -532,12 +551,13 @@ def dmt_results_prompt_view(request, file_id):
         version_choice = request.POST.get("version_choice")
         if version_choice not in ["latest", "oldest", "all"]:
             messages.error(request, "Please select a valid version option.")
-            return redirect("dmt_results_prompt", file_id=file_id)
+            return redirect("dmt_results_prompt", file_id=upload.id)
 
         request.session["version_choice"] = version_choice
-        request.session["file_id"] = file_id
+        request.session["file_id"] = upload.id
+        request.session["folder_name"] = upload.folder_name  # helpful for fallback
 
-        return redirect("dmt_filtration_handler", file_id=new_uploaded_file.id)
+        return redirect("dmt_filtration_handler", file_id=upload.id)
 
     return render(request, "dmt_results_prompt.html", {"upload": upload})
 
