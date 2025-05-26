@@ -571,37 +571,6 @@ def download_filtered_file(request):
     response = FileResponse(open(filtered_file_path, "rb"), as_attachment=True, filename=os.path.basename(filtered_file_path))
     return response
 
-def load_excel(request):
-    try:
-        latest_file = UploadedExcel.objects.order_by('-uploaded_at').first()
-        if not latest_file:
-            return render(request, 'excel_view.html', {
-                'main_data': "[]",  
-                'business_data': "[]"
-            })
-
-        file_data = BytesIO(latest_file.file_name.read())
-        xls = pd.ExcelFile(file_data)
-
-        main_sheet = xls.parse('Main').fillna("").astype(str).values.tolist()
-        business_sheet = xls.parse('Business Approved List').fillna("").astype(str).values.tolist()
-
-        # 🔹 Debugging: Print the JSON output in the terminal
-        print("Main Data JSON:", json.dumps(main_sheet))  
-        print("Business Data JSON:", json.dumps(business_sheet))  
-
-        return render(request, 'excel_view.html', {
-            'main_data': json.dumps(main_sheet),  
-            'business_data': json.dumps(business_sheet)
-        })
-
-    except Exception as e:
-        return render(request, 'excel_view.html', {
-            'main_data': "[]",
-            'business_data': "[]"
-        })
-
-
 def download_file(request, file_id):
     upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)
     file_path = upload.excel_file.path

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import user_login, user_logout, dashboard, user_signup, forgot_password, verify_otp, reset_password,admin_dashboard, make_admin, delete_user,load_excel,upload_excel,view_excel_sheet,view_excel_sheet_redirect,download_file,delete_file,run_dmt_filtration_view,download_filtered_file,dmt_results_prompt_view
+from .views import user_login, user_logout, dashboard, user_signup, forgot_password, verify_otp, reset_password,admin_dashboard, make_admin, delete_user,upload_excel,view_excel_sheet,view_excel_sheet_redirect,download_file,delete_file,run_dmt_filtration_view,download_filtered_file,dmt_results_prompt_view
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -14,7 +14,6 @@ urlpatterns = [
     path('admin_dashboard/', admin_dashboard, name='admin_dashboard'),
     path('make_admin/<int:user_id>/', make_admin, name='make_admin'),
     path('delete_user/<int:user_id>/', delete_user, name='delete_user'),
-    path('load_excel/', load_excel, name='load_excel'),
     path('upload_excel/', upload_excel, name='upload_excel'),
     path("view-excel/<int:stored_excel_id>/", view_excel_sheet, name="view_excel_sheet"),
     path("view-excel-redirect/", view_excel_sheet_redirect, name="view_excel_sheet_redirect"),
