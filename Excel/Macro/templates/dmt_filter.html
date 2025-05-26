@@ -14,6 +14,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <!-- Animate.css -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  <!-- Read Excel Files Using Js -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --primary-violet: #4a1a5c;
@@ -30,6 +32,7 @@
       --success-glow: #00ff88;
       --warning-glow: #ffa500;
       --danger-glow: #ff4757;
+      --bs-secondary-color: pink;
     }
     
     * {
@@ -251,8 +254,11 @@
     }
     
     .table {
+      width: 100%;
+      border-collapse: collapse;
       color: var(--text-primary);
       margin-bottom: 0;
+      table-layout: fixed;
     }
     
     .table thead {
@@ -260,30 +266,45 @@
     }
     
     .table thead th {
-      border: none;
-      padding: 1.2rem;
+      border: 1px solid #bf40bf;
+      padding: 1rem;
       font-family: 'Orbitron', monospace;
+      vertical-align: top;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
       position: relative;
     }
     
     .table tbody tr {
-      border-bottom: 1px solid rgba(191, 64, 191, 0.1);
+      border: 1px solid #bf40bf;    
       transition: all 0.3s ease;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
     }
     
     .table tbody tr:hover {
       background: rgba(191, 64, 191, 0.1);
-      transform: scale(1.01);
+      transform: translateX(5px);
       box-shadow: 0 5px 15px rgba(191, 64, 191, 0.2);
     }
     
     .table tbody td {
-      border: none;
+      border: 1px solid #bf40bf;
       padding: 1rem;
-      vertical-align: middle;
+      vertical-align: top;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
     }
 
     .table-scroll {
@@ -447,6 +468,26 @@
     ::-webkit-scrollbar-thumb:hover {
       background: linear-gradient(45deg, var(--neon-purple), var(--accent-violet));
     }
+
+    .neon-button {
+      background: linear-gradient(90deg, #8e2de2, #4a00e0);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-weight: bold;
+      font-size: 1rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(142, 45, 226, 0.75), 0 0 24px rgba(74, 0, 224, 0.45);
+      transition: all 0.3s ease-in-out;
+      text-decoration: none;
+      display: inline-block;
+}
+  .neon-button:hover {
+    box-shadow: 0 0 20px rgba(142, 45, 226, 1), 0 0 40px rgba(74, 0, 224, 0.8);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
   </style>
 </head>
 <body>
@@ -462,20 +503,13 @@
         <p class="mb-0 text-light opacity-75">Advanced Data Management & Filtration System</p>
       </div>
       <div>
-        {% if download_ready %}
-<a href="{% url 'download_filtered_excel' %}" class="btn btn-outline-primary pulse">
-      <i class="fas fa-download me-2"></i>
-      Download Filtered Excel ({{ filtered_filename }})
-      </a>
-      {% else %}
-      <button class="btn btn-outline-primary pulse" disabled>
-      <i class="fas fa-download me-2"></i>
-      Export Results
-      </button>
-      {% endif %}
+         <a href="{% url 'dashboard' %}" class="btn neon-button">
+          <i class="fas fa-home me-2"></i> Go to Dashboard
+        </a>
       </div>
     </div>
   </div>
+</div>
 
   <!-- Summary Cards Section -->
   <div class="row g-4 mb-5">
@@ -486,7 +520,7 @@
             <i class="fas fa-database fa-2x text-info"></i>
           </div>
           <h6 class="card-subtitle mb-3 text-muted text-uppercase">Total Records</h6>
-          <div class="stats-number">1,247</div>
+          <div class="stats-number" id="totalCount">{{ total_count|default:"0" }}</div>
           <div class="progress mt-3">
             <div class="progress-bar" style="width: 100%"></div>
           </div>
@@ -500,9 +534,9 @@
             <i class="fas fa-check-circle fa-2x text-success"></i>
           </div>
           <h6 class="card-subtitle mb-3 text-muted text-uppercase">Approved</h6>
-          <div class="stats-number">892</div>
+          <div class="stats-number" id="approvedCount">{{ approved_count|default:"0" }}</div>
           <div class="progress mt-3">
-            <div class="progress-bar bg-success" style="width: 75%"></div>
+          <div class="progress-bar bg-success" style="width: {{ approved_percent|default:0|floatformat:0 }}%"></div>
           </div>
         </div>
       </div>
@@ -514,9 +548,9 @@
             <i class="fas fa-clock fa-2x text-warning"></i>
           </div>
           <h6 class="card-subtitle mb-3 text-muted text-uppercase">Pending</h6>
-          <div class="stats-number">355</div>
+          <div class="stats-number" id="pendingCount">{{ pending_count|default:"0" }}</div>
           <div class="progress mt-3">
-            <div class="progress-bar bg-warning" style="width: 25%"></div>
+            <div class="progress-bar bg-warning" style="width: {{ pending_percent|default:0|floatformat:0 }}%"></div>
           </div>
         </div>
       </div>
@@ -529,10 +563,7 @@
       <i class="fas fa-table me-3"></i>
       Filtered Records
     </h4>
-    
         <div class="row g-4">
-        
-
         <!-- Replace the tables section with: -->
         {% if download_ready %}
         {% for sheet, table_html in tables_html.items %}
@@ -698,6 +729,21 @@
       });
     });
   });
+document.getElementById('excelUpload').addEventListener('change', function (e) {
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    updateCounts(json);
+  };
+
+  reader.readAsArrayBuffer(e.target.files[0]);
+});
 </script>
 </body>
 </html>

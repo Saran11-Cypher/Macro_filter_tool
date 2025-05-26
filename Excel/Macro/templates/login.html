@@ -150,7 +150,7 @@
             </button>
 
             <p class="text-center mb-0">
-                Don't have an account? <a href={%url 'signup'%} class="text-primary text-decoration-none">Sign up</a>
+                Don't have an account? <a href="{% url 'signup' %}"  class="text-primary text-decoration-none">Sign up</a>
             </p>
 
             {% if error %}
@@ -159,14 +159,7 @@
             </div>
             {% endif %}
         </form>
-
-        {% if user.is_staff %}
-        <div class="text-center mt-3">
-            <a href="/admin/" class="btn btn-secondary w-100">Go to Admin Panel</a>
-        </div>
-        {% endif %}
     </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (document.cookie.includes('remember_username')) {

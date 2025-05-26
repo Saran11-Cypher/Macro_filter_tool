@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout,get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.files.base import ContentFile
@@ -8,8 +8,7 @@ from django.core.files.storage import default_storage
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import os, random,json, xlrd, math
-from .utils import process_hrl_files
-from .utils import is_file_locked
+from .utils import process_hrl_files,is_file_locked
 from django.core.files import File
 from io import BytesIO
 import pandas as pd
@@ -25,19 +24,19 @@ from django.shortcuts import render, get_object_or_404
 from .forms import ExcelUploadForm
 from django.utils.timezone import now
 from django.http import FileResponse, Http404, HttpResponse
-
+User = get_user_model()
 # Function to check if user is admin
 def is_admin(user):
     return user.is_superuser  # Only allow superusers
 
-def excel_dash(request):
-    return render(request, "excel_view.html")
-
+# Admin access view
 @login_required
-@user_passes_test(is_admin)
-def admin_dashboard(request):
-    users = User.objects.all()  # Admin can see all users
-    return render(request, 'admin_dash.html', {'users': users})
+def admin_access_view(request):
+    users = User.objects.all()
+    return render(request, 'admin_access.html', {
+        'users': users,
+        'user': request.user,
+    })
 
 # Make a user an admin
 @login_required
@@ -66,23 +65,15 @@ def user_login(request):
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
-
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
             login(request, user)
-
-            # Check if user is admin
-            if user.is_staff or user.is_superuser:
-                return redirect('/admin/')  # Redirect to Django admin panel
-
-            return redirect('dashboard')  # Redirect to dashboard instead of 'home'
-
+            return redirect('dashboard')  # 🔁 redirect to your custom dashboard
         else:
-            messages.error(request, "Invalid username or password.")
-            return redirect('login')
+            messages.error(request, 'Invalid username or password.')
 
-    return render(request, 'login.html')
+    return render(request, 'login.html')  # your custom login template
 
 def user_logout(request):
     logout(request)
@@ -500,15 +491,33 @@ def run_dmt_filtration_view(request, file_id):
         # ✅ Generate HTML preview of filtered Excel
         xls = pd.ExcelFile(result_path)
         tables_html = {}
+        total_count = approved_count = pending_count = 0
+        approved_percent = pending_percent = 0
         for sheet_name in xls.sheet_names:
             df = xls.parse(sheet_name)
             tables_html[sheet_name] = df.to_html(classes="table table-bordered table-sm", index=False)
+            
+            if 'HRL Available?' in df.columns:
+                hrl_series = df['HRL Available?'].astype(str).str.strip().str.lower()
+                total_count += len(df)
+                approved_count += (hrl_series == 'hrl found').sum()
+                pending_count += (hrl_series != 'hrl found').sum()
+                
+        approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
+        pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
+        print("Approved Count:", approved_count)
+        print("Approved Percent:", approved_percent)
 
         context = {
             "download_ready": True,
             "filtered_filename": filtered_filename,
             "tables_html": tables_html,
             "download_url": filtered_instance.excel_file.url,
+            "total_count": total_count,
+            "approved_count": approved_count,
+            "pending_count": pending_count,
+            "approved_percent": approved_percent,
+            "pending_percent": pending_percent,
         }
 
         return render(request, "dmt_filter.html", context)
@@ -541,7 +550,7 @@ def dmt_results_prompt_view(request, file_id):
             ).order_by("-uploaded_at").first()
 
             if latest_upload:
-                messages.warning(request, "The originally selected file was deleted. Loaded the latest available one.")
+
                 return redirect("dmt_results_prompt", file_id=latest_upload.id)
 
         messages.error(request, "The requested Excel file does not exist or you do not have permission to access it.")
@@ -565,11 +574,16 @@ def dmt_results_prompt_view(request, file_id):
 @login_required
 def download_filtered_file(request):
     filtered_file_path = request.session.get("filtered_file_path")
-    if not filtered_file_path or not os.path.exists(filtered_file_path):
-        return HttpResponse("Filtered file not found.", status=404)
+    print("Filtered file path from session:", filtered_file_path)
 
-    response = FileResponse(open(filtered_file_path, "rb"), as_attachment=True, filename=os.path.basename(filtered_file_path))
-    return response
+    if not filtered_file_path:
+        return HttpResponse("Path not set in session.", status=400)
+
+    if not os.path.exists(filtered_file_path):
+        return HttpResponse(f"File does not exist at: {filtered_file_path}", status=404)
+
+    return FileResponse(open(filtered_file_path, "rb"), as_attachment=True, filename=os.path.basename(filtered_file_path))
+
 
 def download_file(request, file_id):
     upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)

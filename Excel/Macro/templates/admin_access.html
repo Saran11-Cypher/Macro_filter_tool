@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-primary: #2c3e50;
+            --text-secondary: #7f8c8d;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .particle:nth-child(1) { width: 80px; height: 80px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 60px; height: 60px; left: 20%; animation-delay: 2s; }
+        .particle:nth-child(3) { width: 100px; height: 100px; left: 35%; animation-delay: 4s; }
+        .particle:nth-child(4) { width: 40px; height: 40px; left: 50%; animation-delay: 1s; }
+        .particle:nth-child(5) { width: 120px; height: 120px; left: 70%; animation-delay: 3s; }
+        .particle:nth-child(6) { width: 70px; height: 70px; left: 85%; animation-delay: 5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.5; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
+        }
+
+        .main-container {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .admin-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUp 0.8s ease-out forwards;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .admin-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--secondary-gradient);
+            border-radius: 24px 24px 0 0;
+        }
+
+        @keyframes slideUp {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .panel-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .admin-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--secondary-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2rem;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .panel-title {
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .user-info h5 {
+            color: white;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-detail {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .user-detail:last-child {
+            margin-bottom: 0;
+        }
+
+        .user-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .user-value {
+            color: white;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 8px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .admin-btn {
+            background: var(--dark-gradient);
+            border: none;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+        }
+
+        .admin-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .admin-btn:hover::before {
+            left: 100%;
+        }
+
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            color: white;
+            text-decoration: none;
+        }
+
+        .admin-btn.primary {
+            background: var(--secondary-gradient);
+        }
+
+        .admin-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .admin-btn i {
+            font-size: 1.2rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(46, 204, 113, 0.2);
+            color: #2ecc71;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 1.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #2ecc71;
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .admin-panel {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .panel-title {
+                font-size: 1.75rem;
+            }
+            
+            .admin-btn {
+                padding: 0.875rem 1.25rem;
+                font-size: 1rem;
+            }
+        }
+
+        /* Smooth hover effects */
+        .user-info {
+            transition: all 0.3s ease;
+        }
+
+        .user-info:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Loading animation for buttons */
+        .admin-btn.loading {
+            pointer-events: none;
+        }
+
+        .admin-btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="main-container">
+        <div class="admin-panel">
+            <div class="panel-header">
+                <div class="admin-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h1 class="panel-title">Admin Portal</h1>
+                <p class="panel-subtitle">Secure Administrative Access</p>
+            </div>
+
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>System Online</span>
+            </div>
+
+        <div class="user-info">
+            <h5><i class="fas fa-user-circle"></i> User Information</h5>
+            <div class="user-detail">
+                <span class="user-label">Username:</span>
+                <span class="user-value" id="username">{{ request.user.username }}</span>
+            </div>
+            <div class="user-detail">
+                <span class="user-label">Email:</span>
+                <span class="user-value" id="email">{{ request.user.email }}</span>
+            </div>
+             <div class="user-detail">
+                <span class="user-label">Role:</span>
+                <span class="user-value">
+                    {% if request.user.is_superuser %}
+                        Administrator
+                    {% else %}
+                        Regular User
+                    {% endif %}
+                </span>
+            </div>
+            <div class="user-detail">
+                <span class="user-label">Last Login:</span>
+                <span class="user-value" id="lastLogin">{{ request.user.last_login }}</span>
+            </div>
+        </div>
+
+            <a href="#" class="admin-btn primary" id="adminBtn" onclick="accessAdminPanel(event)">
+                <i class="fas fa-tools"></i>
+                <span id="adminLinkText">Access Admin Dashboard</span>
+                </a>
+
+                <a href="{% url 'logout' %}" class="admin-btn secondary" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Secure Logout</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+          function accessAdminPanel(event) {
+        event.preventDefault();  // prevents the anchor tag from acting like a link
+
+        const isAdmin = "{{ request.user.is_superuser|yesno:'true,false' }}";
+
+        const linkText = document.getElementById("adminLinkText");
+        linkText.textContent = "Redirecting to admin dashboard...";
+
+        if (isAdmin === "true") {
+            // Redirect admin users to Django admin panel
+            window.location.href = "/admin/";
+        } else {
+            // Redirect non-admins to access denied page
+            window.location.href = "{% url 'no_access' %}";
+        }
+    }
+        // Add loading animation to buttons
+        document.getElementById('adminBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            this.classList.add('loading');
+            const icon = this.querySelector('i');
+            icon.className = 'fas fa-spinner';
+            
+            // Simulate loading
+            setTimeout(() => {
+                // In Django template, this would be: window.location.href = "{% url 'admin:index' %}";
+                console.log('Redirecting to admin dashboard...');
+            }, 1500);
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            this.classList.add('loading');
+            const icon = this.querySelector('i');
+            icon.className = 'fas fa-spinner';
+            
+            // Simulate loading
+            setTimeout(() => {
+                // In Django template, this would be: window.location.href = "{% url 'logout' %}";
+                console.log('Logging out...');
+            }, 1500);
+        });
+
+        // Add some dynamic effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update last login time
+            const now = new Date();
+            document.getElementById('lastLogin').textContent = now.toLocaleString();
+            
+            // Add subtle animations to user info cards
+            const userDetails = document.querySelectorAll('.user-detail');
+            userDetails.forEach((detail, index) => {
+                detail.style.animationDelay = `${index * 0.1}s`;
+                detail.style.animation = 'slideUp 0.6s ease-out forwards';
+            });
+        });
+
+        // Add parallax effect to particles
+        document.addEventListener('mousemove', function(e) {
+            const particles = document.querySelectorAll('.particle');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            particles.forEach((particle, index) => {
+                const speed = (index + 1) * 0.5;
+                const xPos = (x - 0.5) * speed * 20;
+                const yPos = (y - 0.5) * speed * 20;
+                particle.style.transform = `translate(${xPos}px, ${yPos}px)`;
+            });
+        });
+    </script>
+</body>
+</html>

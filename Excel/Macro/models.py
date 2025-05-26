@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, connection
 from django.contrib.auth import get_user_model
 import json
 from django.utils.timezone import now
@@ -32,11 +32,8 @@ class StoredExcel(models.Model):
     def __str__(self):
         return f"Excel File in {self.folder_name} by {self.user.username}"
 
-
-
-
-
 class UploadedExcel(models.Model):
+    id = models.IntegerField(primary_key=True) 
     folder_name = models.CharField(max_length=255)
     excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/%H-%M-%S/', blank=True, null=True, max_length=1000)
     file_name = models.CharField(max_length=255)
@@ -45,10 +42,22 @@ class UploadedExcel(models.Model):
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=50, default='Processed')
     stored_excel = models.ForeignKey(StoredExcel, on_delete=models.CASCADE, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.id:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM Macro_uploadedexcel ORDER BY id;")
+                existing_ids = [row[0] for row in cursor.fetchall()]
+                new_id = 1
+                for eid in existing_ids:
+                    if new_id < eid:
+                        break
+                    new_id += 1
+                self.id = new_id  # Assign the lowest available ID
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.excel_file.name} - {self.uploaded_by.username}"
-
-
 
 class ExcelFile(models.Model):
     file = models.FileField(upload_to="excel_files/")
