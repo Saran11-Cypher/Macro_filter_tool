@@ -177,36 +177,46 @@
                             <i class="fas fa-file-excel file-icon"></i>
                             <div>
                                 <div class="text-muted small">Selected File</div>
-                                <div class="fw-bold">{{ upload.folder_name }}</div>
+                                <a href="{% url 'dmt_results_prompt' upload.id %}" class="btn btn-sm btn-outline-primary fw-bold">
+  {{ upload.folder_name }} / {{ upload.file_name }}
+</a>
                             </div>
                         </div>
                         
-                        <form method="post" action="" id="versionForm">
-                            {% csrf_token %}
-                            <div class="select-container" data-aos="fade-up" data-aos-delay="300">
-                                <label for="version_choice" class="form-label">
-                                    <i class="fas fa-code-branch me-2"></i>Choose version:
-                                </label>
-                                <select name="version_choice" id="version_choice" class="form-select" required>
-                                    <option value="" disabled selected>Select a version</option>
-                                    <option value="latest"><i class="fas fa-arrow-up"></i> Latest Version</option>
-                                    <option value="oldest"><i class="fas fa-history"></i> Oldest Version</option>
-                                    <option value="all"><i class="fas fa-list-ul"></i> All Versions</option>
-                                </select>
-                                {% for message in messages %}
-                                <div class="alert alert-warning">{{ message }}</div>
-                                {% endfor %}
-                            </div>
-                            
-                            <div class="actions d-flex gap-2" data-aos="fade-up" data-aos-delay="400">
-                                <button type="submit" class="btn btn-primary pulse">
-                                    <i class="fas fa-play btn-icon"></i>Run Filter
-                                </button>
-                                <a href="{% url 'upload_excel' %}" class="btn btn-secondary">
-                                    <i class="fas fa-times btn-icon"></i>Cancel
-                                </a>
-                            </div>
-                        </form>
+                    <form method="post" action="" id="versionForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="file_id" value="{{ upload.id }}">
+                        
+                        <div class="select-container" data-aos="fade-up" data-aos-delay="300">
+                            <label for="version_choice" class="form-label">
+                                <i class="fas fa-code-branch me-2"></i>Choose version:
+                            </label>
+                            <select name="version_choice" id="version_choice" class="form-select" required>
+                                <option value="" disabled selected>Select a version</option>
+                                <option value="latest">Latest Version</option>
+                                <option value="oldest">Oldest Version</option>
+                                <option value="all">All Versions</option>
+                            </select>
+                            {% for message in messages %}
+                            <div class="alert alert-warning">{{ message }}</div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-primary pulse">
+                            <i class="fas fa-play btn-icon"></i>Run Filter
+                        </button>
+                        <a href="" class="btn btn-secondary">
+                            <i class="fas fa-times btn-icon"></i>Cancel
+                        </a>
+                        </div>
+                        {% if upload.stored_excel and upload.stored_excel.id %}
+                        <a href="{% url 'view_excel_sheet' upload.stored_excel.id %}" class="btn btn-secondary ...">
+                            <i></i> Back to View Sheet Tab
+                        </a>
+                        {% else %}
+                        <span class="btn btn-secondary disabled">Back to View Sheet Tab</span>
+                        {% endif %}
+                        </div>
+                    </form>
                     </div>
                 </div>
             </div>

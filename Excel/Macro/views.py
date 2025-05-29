@@ -23,7 +23,10 @@ from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from .forms import ExcelUploadForm
 from django.utils.timezone import now
+from .html_merge import merge_files_in_batches
+from .forms import HTMLMergeForm
 from django.http import FileResponse, Http404, HttpResponse
+from collections import defaultdict
 User = get_user_model()
 # Function to check if user is admin
 def is_admin(user):
@@ -272,6 +275,7 @@ def upload_excel(request):
         user_folder = os.path.join(settings.MEDIA_ROOT, 'uploads', str(request.user.id), folder_name)
         os.makedirs(user_folder, exist_ok=True)
 
+        # Check for existing file in the same folder
         uploaded_files_qs = UploadedExcel.objects.filter(
             uploaded_by=request.user,
             folder_name=folder_name,
@@ -300,14 +304,13 @@ def upload_excel(request):
 
             json_data = {}
             for sheet_name, df in excel_data.items():
-                # Drop Unnamed columns
-                    df_cleaned = df.loc[:, ~df.columns.str.contains("^Unnamed")]
-                    # Replace NaN, NaT, etc.
-                    df_cleaned = df_cleaned.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
-                    json_data[sheet_name] = {
-        "columns": list(df_cleaned.columns),
-        "data": df_cleaned.to_dict(orient="records")
-    }
+                df_cleaned = df.loc[:, ~df.columns.str.contains("^Unnamed")]
+                df_cleaned = df_cleaned.replace({pd.NA: None, pd.NaT: None, float('nan'): None})
+                json_data[sheet_name] = {
+                    "columns": list(df_cleaned.columns),
+                    "data": df_cleaned.to_dict(orient="records")
+                }
+
             def clean_json(data):
                 if isinstance(data, dict):
                     return {k: clean_json(v) for k, v in data.items()}
@@ -320,15 +323,17 @@ def upload_excel(request):
 
             cleaned_data = clean_json(json_data)
             safe_json = json.dumps(cleaned_data, default=str)
-            
 
-            stored_excel = StoredExcel.objects.create(
+            stored_excel, _ = StoredExcel.objects.get_or_create(
                 user=request.user,
                 folder_name=folder_name,
                 data=safe_json
             )
+            # Update existing stored_excel if newly uploaded
+            stored_excel.data = safe_json
+            stored_excel.save()
 
-            new_upload = UploadedExcel.objects.create(
+            UploadedExcel.objects.create(
                 excel_file=uploaded_file,
                 uploaded_by=request.user,
                 folder_name=folder_name,
@@ -346,38 +351,49 @@ def upload_excel(request):
             messages.error(request, f"Error processing Excel file: {e}")
             return redirect("upload_excel")
 
-    uploaded_files = UploadedExcel.objects.filter(uploaded_by=request.user).order_by("-uploaded_at")
+    # === GET request ===
+
+    uploaded_files = UploadedExcel.objects.filter(uploaded_by=request.user).order_by("-timestamp")
     stored_excels = StoredExcel.objects.filter(user=request.user).order_by("-uploaded_at")
-    
-    # Organize data for 'stored_data'
     folder_names = UploadedExcel.objects.filter(uploaded_by=request.user).values_list('folder_name', flat=True).distinct()
 
-    # Handle selected folder from dropdown (via GET parameter)
-    selected_folder_name = request.GET.get("folder")
-    selected_file_id = request.GET.get("file")
-    selected_folder_uploads = []
+    # Handle file dropdown selection
+    selected_folder_name = request.GET.get("selected_folder_name")
+    selected_file_id = request.GET.get("selected_file_id")
+
+    selected_folder_uploads = None
     if selected_folder_name:
         selected_folder_uploads = UploadedExcel.objects.filter(
             uploaded_by=request.user,
             folder_name=selected_folder_name
         ).order_by("-timestamp")
 
-    # Recent uploads (e.g., last 10 or all for this user)
-    uploaded_files = UploadedExcel.objects.filter(uploaded_by=request.user).order_by('-timestamp')[:10]
-    
+    selected_file = None
+    if selected_folder_name and selected_file_id:
+        try:
+            selected_file = UploadedExcel.objects.get(id=selected_file_id)
+        except UploadedExcel.DoesNotExist:
+            selected_file = None
+
+    # Group uploads by folder
+    uploads_grouped_by_folder = defaultdict(list)
+    for upload in UploadedExcel.objects.filter(uploaded_by=request.user).order_by("-timestamp"):
+        uploads_grouped_by_folder[upload.folder_name].append(upload)
+
     return render(request, "upload_excel.html", {
-        "folder_name": folder_name,
         "form": form,
+        "folder_name": folder_name,
         "preview_html": preview_html,
         "message": message,
-        "uploaded_files": uploaded_files,
+        "uploads_grouped_by_folder": dict(uploads_grouped_by_folder),
         "stored_excels": stored_excels,
         "version_choice": version_choice,
         "recent_uploads": uploaded_files,
         "folder_names": folder_names,
-        "selected_folder_uploads": selected_folder_uploads,
         "selected_folder_name": selected_folder_name,
-        "selected_file_id": selected_file_id,    
+        "selected_file_id": selected_file_id,
+        "selected_file": selected_file,
+        "selected_folder_uploads": selected_folder_uploads,
     })
 
 
@@ -445,6 +461,10 @@ def view_excel_sheet_redirect(request):
 
 @login_required
 def run_dmt_filtration_view(request, file_id):
+    session_file_id = request.session.get("file_id")
+    if str(file_id) != str(session_file_id):
+        messages.error(request, "Mismatch between selected file and session data.")
+        return redirect("dmt_results_prompt", file_id=file_id)
     uploaded_file = get_object_or_404(UploadedExcel, pk=file_id, uploaded_by=request.user)
 
     if not uploaded_file.excel_file:
@@ -528,45 +548,31 @@ def run_dmt_filtration_view(request, file_id):
         return redirect("dmt_results_prompt", file_id=file_id)
     
     
-@login_required
 def dmt_results_prompt_view(request, file_id):
-    print(f"📦 Requested File ID: {file_id}")
-    print(f"👤 Requesting user: {request.user}")
+    upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)
+    selected_folder = request.session.get("selected_folder_name")
 
-    # ✅ Try getting the file; if it doesn't exist, fallback to latest in folder
-    try:
-        upload = UploadedExcel.objects.get(id=file_id)
-        if upload.uploaded_by != request.user:
-            messages.error(request, "You do not have permission to access this file.")
-            return redirect("upload_excel")
-    except UploadedExcel.DoesNotExist:
-        # Try fallback: get latest file in user's uploads by folder name if session has it
-        folder_name = request.GET.get("folder") or request.session.get("folder_name")
+    print(f"📦 File selected: {upload.file_name} from folder {upload.folder_name}")
+    print(f"🌐 Session folder: {selected_folder}")
 
-        if folder_name:
-            latest_upload = UploadedExcel.objects.filter(
-                uploaded_by=request.user,
-                folder_name=folder_name
-            ).order_by("-uploaded_at").first()
-
-            if latest_upload:
-
-                return redirect("dmt_results_prompt", file_id=latest_upload.id)
-
-        messages.error(request, "The requested Excel file does not exist or you do not have permission to access it.")
+    # ❌ Block manual tampering (accessing file from other folder)
+    if selected_folder and upload.folder_name != selected_folder:
+        messages.error(request, "This file does not belong to the selected folder.")
         return redirect("upload_excel")
 
     if request.method == "POST":
+        posted_file_id = request.POST.get("file_id")
         version_choice = request.POST.get("version_choice")
+
+        if posted_file_id != str(upload.id):
+            messages.error(request, "Mismatch in file ID. Please try again.")
+            return redirect("upload_excel")
+
         if version_choice not in ["latest", "oldest", "all"]:
             messages.error(request, "Please select a valid version option.")
-            return redirect("dmt_results_prompt", file_id=upload.id)
+            return redirect("dmt_results_prompt", file_id=file_id)
 
-        request.session["version_choice"] = version_choice
-        request.session["file_id"] = upload.id
-        request.session["folder_name"] = upload.folder_name  # helpful for fallback
-
-        return redirect("dmt_filtration_handler", file_id=upload.id)
+        return redirect("dmt_filtration_handler", file_id=file_id)
 
     return render(request, "dmt_results_prompt.html", {"upload": upload})
 
@@ -603,3 +609,61 @@ def delete_file(request, file_id):
 
     messages.success(request, "File deleted successfully.")
     return redirect("upload_excel")
+
+
+def html_merge_view(request):
+    final_output_folder = None
+
+    if request.method == "POST":
+        batch_size = request.POST.get("batch_size")
+        run_id = request.POST.get("output_name", "").strip()
+
+        if not run_id:
+            messages.error(request, "Output folder name cannot be empty.")
+        elif not batch_size:
+            messages.error(request, "Batch size is required.")
+        else:
+            try:
+                batch_size = int(batch_size)
+                uploaded_files = request.FILES.getlist("folder")
+
+                if not uploaded_files:
+                    messages.error(request, "No files received.")
+                    return render(request, "merge_html.html", {})
+
+                # Save uploaded files to temp folder
+                input_folder = os.path.join(settings.MEDIA_ROOT, "temp_upload")
+                os.makedirs(input_folder, exist_ok=True)
+
+                for f in uploaded_files:
+                    file_path = os.path.join(input_folder, f.name)
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    with open(file_path, "wb+") as dest:
+                        for chunk in f.chunks():
+                            dest.write(chunk)
+
+                # Final output path using user-defined folder
+                output_folder = os.path.join(settings.MEDIA_ROOT, run_id)
+                os.makedirs(output_folder, exist_ok=True)
+
+                # Merge logic
+                merge_files_in_batches(
+                    input_folder=input_folder,
+                    base_output_folder=settings.MEDIA_ROOT,
+                    num_files=len(uploaded_files),
+                    batch_size=batch_size,
+                    run_id=run_id
+                )
+
+                messages.success(request, f"Merge complete. Output saved in: {run_id}/")
+                final_output_folder = run_id
+
+            except Exception as e:
+                messages.error(request, f"Merge failed: {str(e)}")
+
+    return render(request, "merge_html.html", {
+        "final_output_folder": final_output_folder
+    })
+
+
+
