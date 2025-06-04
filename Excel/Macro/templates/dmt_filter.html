@@ -494,22 +494,28 @@
 <!-- Page Header -->
 <div class="container mt-4">
   <div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-      <div>
-        <h2 class="mb-2">
-          <i class="fas fa-filter me-3"></i>
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+      <div class="pe-3">
+        <h2 class="mb-1">
+          <i class="fas fa-filter me-2"></i>
           DMT Filtration Results
         </h2>
-        <p class="mb-0 text-light opacity-75">Advanced Data Management & Filtration System</p>
+        <p class="mb-0 text-light opacity-75">
+          Advanced Data Management & Filtration System
+        </p>
       </div>
-      <div>
-         <a href="{% url 'dashboard' %}" class="btn neon-button">
+      <div class="d-flex gap-3">
+        <a href="{% url 'dashboard' %}" class="btn neon-button">
           <i class="fas fa-home me-2"></i> Go to Dashboard
+        </a>
+        <a href="{% url 'upload_excel' %}" class="btn neon-button">
+          <i class="fas fa-upload me-2"></i> Go to Uploads
         </a>
       </div>
     </div>
   </div>
 </div>
+
 
   <!-- Summary Cards Section -->
   <div class="row g-4 mb-5">
@@ -729,21 +735,24 @@
       });
     });
   });
-document.getElementById('excelUpload').addEventListener('change', function (e) {
-  const reader = new FileReader();
+const excelInput = document.getElementById('excelUpload');
+if (excelInput) {
+  excelInput.addEventListener('change', function (e) {
+    const reader = new FileReader();
 
-  reader.onload = function (e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
+    reader.onload = function (e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
 
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
 
-    updateCounts(json);
-  };
+      updateCounts(json);
+    };
 
-  reader.readAsArrayBuffer(e.target.files[0]);
-});
+    reader.readAsArrayBuffer(e.target.files[0]);
+  });
+}
 </script>
 </body>
 </html>

@@ -49,7 +49,7 @@ def categorize_files(folder_path):
                 continue  # Skip invalid files
 
             normalized_config_name = normalize_text(config_name)
-            print(f"🔍 Processing with normalized config name: {normalized_config_name}")
+            # print(f"🔍 Processing with normalized config name: {normalized_config_name}")
 
             if normalized_config_name in single_version_files:
                 multi_version_files[normalized_config_name].append(file)
@@ -65,10 +65,10 @@ def find_matching_file(config_name, single_version_files, multi_version_files, s
     if "&" in config_name:
         config_name = config_name.replace("&", "and")
     normalized_key = normalize_text(config_name)
-    print(f"🔍 Looking for matches for: {normalized_key} | Version: {selected_version}")
+    # print(f"🔍 Looking for matches for: {normalized_key} | Version: {selected_version}")
 
     if normalized_key in single_version_files:
-        print(f"✅ Single-version match found: {single_version_files[normalized_key][0]}")
+        #print(f"✅ Single-version match found: {single_version_files[normalized_key][0]}")
         return [single_version_files[normalized_key][0]]
 
     elif normalized_key in multi_version_files:
@@ -126,9 +126,9 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
     HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
     os.makedirs(HRL_PARENT_FOLDER, exist_ok=True)
 
-    print("File exists:", os.path.exists(excel_path))
-    print("Path:", excel_path)
-    print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
+    # print("File exists:", os.path.exists(excel_path))
+    # print("Path:", excel_path)
+    # print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
 
     # Load workbook and sheets
     wb = load_workbook(excel_path)
@@ -145,11 +145,11 @@ def process_hrl_files(excel_path, upload_folder, version_choice):
     )
     df_bal.columns = df_bal.columns.str.strip()
 
-    print("📄 Raw df_bal.head():\n", df_bal.head())
-    print("🧾 df_bal.columns (raw):", df_bal.columns.tolist())
-    print("🔍 Available columns in Excel file:")
-    for col in df_bal.columns:
-        print(f"→ '{col}'")
+    # print("📄 Raw df_bal.head():\n", df_bal.head())
+    # print("🧾 df_bal.columns (raw):", df_bal.columns.tolist())
+    # print("🔍 Available columns in Excel file:")
+    # for col in df_bal.columns:
+    #     print(f"→ '{col}'")
 
     # 🔁 Dynamically map important columns (case-insensitive)
     col_map = {col.strip().lower(): col for col in df_bal.columns}

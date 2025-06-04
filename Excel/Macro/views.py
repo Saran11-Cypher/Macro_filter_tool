@@ -11,8 +11,9 @@ import os, random,json, xlrd, math
 from .utils import process_hrl_files,is_file_locked
 from django.core.files import File
 from io import BytesIO
+from django.views.decorators.http import require_GET
 import pandas as pd
-import shutil,os, re, traceback, ntpath
+import shutil,os, re, traceback, ntpath, threading
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.http import JsonResponse
@@ -27,6 +28,8 @@ from .html_merge import merge_files_in_batches
 from .forms import HTMLMergeForm
 from django.http import FileResponse, Http404, HttpResponse
 from collections import defaultdict
+from django.core.cache import cache
+
 User = get_user_model()
 # Function to check if user is admin
 def is_admin(user):
@@ -275,7 +278,6 @@ def upload_excel(request):
         user_folder = os.path.join(settings.MEDIA_ROOT, 'uploads', str(request.user.id), folder_name)
         os.makedirs(user_folder, exist_ok=True)
 
-        # Check for existing file in the same folder
         uploaded_files_qs = UploadedExcel.objects.filter(
             uploaded_by=request.user,
             folder_name=folder_name,
@@ -329,7 +331,6 @@ def upload_excel(request):
                 folder_name=folder_name,
                 data=safe_json
             )
-            # Update existing stored_excel if newly uploaded
             stored_excel.data = safe_json
             stored_excel.save()
 
@@ -361,6 +362,10 @@ def upload_excel(request):
     selected_folder_name = request.GET.get("selected_folder_name")
     selected_file_id = request.GET.get("selected_file_id")
 
+    # ✅ Save selected folder to session for DMT prompt logic
+    if selected_folder_name:
+        request.session["selected_folder_name"] = selected_folder_name
+
     selected_folder_uploads = None
     if selected_folder_name:
         selected_folder_uploads = UploadedExcel.objects.filter(
@@ -375,7 +380,6 @@ def upload_excel(request):
         except UploadedExcel.DoesNotExist:
             selected_file = None
 
-    # Group uploads by folder
     uploads_grouped_by_folder = defaultdict(list)
     for upload in UploadedExcel.objects.filter(uploaded_by=request.user).order_by("-timestamp"):
         uploads_grouped_by_folder[upload.folder_name].append(upload)
@@ -396,68 +400,43 @@ def upload_excel(request):
         "selected_folder_uploads": selected_folder_uploads,
     })
 
-
 @login_required
-def view_excel_sheet(request, stored_excel_id):
-    stored_excel = get_object_or_404(StoredExcel, id=stored_excel_id, user=request.user)
+def dmt_filter_view(request, file_id):
+    context = cache.get(f"result_context_{file_id}")
 
-    # ✅ Safely parse JSON only if it's a string
-    sheet_data = stored_excel.data
-    if isinstance(sheet_data, str):
-        try:
-            sheet_data = json.loads(sheet_data)
-        except json.JSONDecodeError:
-            print(f"❌ Invalid JSON in StoredExcel {stored_excel_id}")
-            sheet_data = {}
-    elif not isinstance(sheet_data, dict):
-        print(f"❌ Unexpected type for sheet_data in StoredExcel {stored_excel_id}: {type(sheet_data)}")
-        sheet_data = {}
+    if not context:
+        # 🔍 Try to find the filtered file
+        filtered_file = get_object_or_404(UploadedExcel, id=file_id, status='Filtered', uploaded_by=request.user)
 
-    sheet_names = list(sheet_data.keys()) if isinstance(sheet_data, dict) else []
-    selected_sheet = request.GET.get("sheet") or (sheet_names[0] if sheet_names else None)
+        if filtered_file.excel_file and default_storage.exists(filtered_file.excel_file.name):
+            try:
+                xls = pd.ExcelFile(filtered_file.excel_file.path)
+                tables_html = {
+                    sheet: xls.parse(sheet).to_html(classes="table table-bordered table-sm", index=False)
+                    for sheet in xls.sheet_names
+                }
 
-    table_html = "<p class='text-danger'>No sheet selected.</p>"
+                context = {
+                    "tables_html": tables_html,
+                    "download_ready": True,
+                    "download_url": filtered_file.excel_file.url,
+                    "filtered_filename": filtered_file.file_name,
+                }
 
-    if selected_sheet and selected_sheet in sheet_data:
-        sheet_content = sheet_data[selected_sheet]
-
-        # Handle both old and new formats
-        if isinstance(sheet_content, list):
-            df = pd.DataFrame(sheet_content)
+                cache.set(f"result_context_{file_id}", context, timeout=86400)
+            except Exception as e:
+                messages.error(request, f"Failed to rebuild filtered results: {e}")
+                return redirect("upload_excel")
         else:
-            columns = sheet_content.get("columns") or []
-            data = sheet_content.get("data") or []
-            df = pd.DataFrame(data, columns=columns)
+            messages.error(request, "The filtration results are not available or may have expired.")
+            return redirect("upload_excel")
+    print("🔍 Filter context keys:", context.keys())
+    return render(request, "dmt_filter.html", context)
 
-        if df.empty and list(df.columns):
-            table_html = df.head(0).to_html(classes="table table-bordered table-striped", index=False)
-        elif not df.empty:
-            table_html = df.to_html(classes="table table-bordered table-striped", index=False)
-        else:
-            table_html = "<p class='text-danger'>The selected sheet has no headers or data.</p>"
-
-    # Debug info
-    print("📄 Sheets available:", sheet_names)
-    print("✅ Selected sheet:", selected_sheet)
-    print("📦 Sheet data keys:", list(sheet_data.keys()) if isinstance(sheet_data, dict) else "N/A")
-
-    return render(request, "view_excel_sheet.html", {
-        "table_html": table_html,
-        "stored_excel": stored_excel,
-        "sheet_names": sheet_names,
-        "selected_sheet": selected_sheet
-    })
-
-    
-@login_required
-def view_excel_sheet_redirect(request):
-    excel_id = request.GET.get("excel_id")
-    if excel_id:
-        return redirect("view_excel_sheet", stored_excel_id=excel_id)
-    else:
-        # Optionally handle the case where no ID was selected
-        return redirect("upload_excel")  # or render a warning message
-
+@require_GET
+def get_progress_status(request, file_id):
+    progress = cache.get(f"progress_{file_id}", 0)
+    return JsonResponse({"progress": progress})
 
 @login_required
 def run_dmt_filtration_view(request, file_id):
@@ -465,116 +444,151 @@ def run_dmt_filtration_view(request, file_id):
     if str(file_id) != str(session_file_id):
         messages.error(request, "Mismatch between selected file and session data.")
         return redirect("dmt_results_prompt", file_id=file_id)
+
     uploaded_file = get_object_or_404(UploadedExcel, pk=file_id, uploaded_by=request.user)
 
     if not uploaded_file.excel_file:
         messages.error(request, "This uploaded file has no associated Excel file.")
-        return redirect('dmt_results_prompt', file_id=file_id)
+        return redirect("dmt_results_prompt", file_id=file_id)
 
     input_excel_path = uploaded_file.excel_file.path
+    if not os.path.exists(input_excel_path):
+        messages.error(request, "The Excel file could not be found on the server. Please re-upload it.")
+        return redirect("upload_excel")
 
-
-    # ✅ Pull version_choice from session, not GET — session is set in dmt_results_prompt_view
-    version_choice = request.session.get('version_choice', 'all')
+    version_choice = request.GET.get('version_choice') or request.session.get('version_choice', 'all')
     print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
 
     config_root = os.path.join(settings.MEDIA_ROOT, "uploads", str(request.user.id), uploaded_file.folder_name)
 
-    try:
-        # ✅ Perform filtration
-        result_path = process_hrl_files(input_excel_path, config_root, version_choice)
+    def run_background():
+        try:
+            cache.set(f"progress_{file_id}", 0)
+            result_path = process_hrl_files(input_excel_path, config_root, version_choice)
 
-        # ✅ Create user-specific folder if needed
-        folder_name = uploaded_file.folder_name.strip()
-        user_upload_dir = os.path.join('uploads', str(request.user.id), folder_name)
-        full_user_upload_dir = os.path.join(settings.MEDIA_ROOT, user_upload_dir)
-        os.makedirs(full_user_upload_dir, exist_ok=True)
+            folder_name = uploaded_file.folder_name.strip()
+            user_upload_dir = os.path.join('uploads', str(request.user.id), folder_name)
+            full_user_upload_dir = os.path.join(settings.MEDIA_ROOT, user_upload_dir)
+            os.makedirs(full_user_upload_dir, exist_ok=True)
 
-        # ✅ Determine destination for filtered file
-        filtered_filename = os.path.basename(result_path)
-        relative_path = os.path.join(user_upload_dir, filtered_filename)
+            filtered_filename = os.path.basename(result_path)
+            relative_path = os.path.join(user_upload_dir, filtered_filename)
 
-        # ✅ Save to Django-managed media
-        with open(result_path, 'rb') as f:
-            saved_path = default_storage.save(relative_path, File(f))
+            with open(result_path, 'rb') as f:
+                saved_path = default_storage.save(relative_path, File(f))
 
-        # ✅ Log new UploadedExcel
-        filtered_instance = UploadedExcel.objects.create(
-            folder_name=folder_name,
-            file_name=filtered_filename,
-            excel_file=saved_path,
-            uploaded_by=uploaded_file.uploaded_by,
-            status='Filtered',
-            stored_excel=uploaded_file.stored_excel
-        )
+            uploaded_file.file_name = filtered_filename
+            uploaded_file.excel_file = saved_path
+            xls = pd.ExcelFile(result_path)
+            tables_html = {}
+            total_count = approved_count = pending_count = 0
+            approved_percent = pending_percent = 0
+            for sheet_name in xls.sheet_names:
+                df = xls.parse(sheet_name)
+                tables_html[sheet_name] = df.to_html(classes="table table-bordered table-sm", index=False)
+                if 'HRL Available?' in df.columns:
+                    hrl_series = df['HRL Available?'].astype(str).str.strip().str.lower()
+                    total_count += len(df)
+                    approved_count += (hrl_series == 'hrl found').sum()
+                    pending_count += (hrl_series != 'hrl found').sum()
 
-        # ✅ Generate HTML preview of filtered Excel
-        xls = pd.ExcelFile(result_path)
-        tables_html = {}
-        total_count = approved_count = pending_count = 0
-        approved_percent = pending_percent = 0
-        for sheet_name in xls.sheet_names:
-            df = xls.parse(sheet_name)
-            tables_html[sheet_name] = df.to_html(classes="table table-bordered table-sm", index=False)
-            
-            if 'HRL Available?' in df.columns:
-                hrl_series = df['HRL Available?'].astype(str).str.strip().str.lower()
-                total_count += len(df)
-                approved_count += (hrl_series == 'hrl found').sum()
-                pending_count += (hrl_series != 'hrl found').sum()
-                
-        approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
-        pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
-        print("Approved Count:", approved_count)
-        print("Approved Percent:", approved_percent)
+            approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
+            pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
+            uploaded_file.total_count = total_count
+            uploaded_file.approved_count = approved_count
+            uploaded_file.pending_count = pending_count
+            uploaded_file.status = 'Filtered'
+            uploaded_file.save()
+            # ✅ Store approved_percent in cache for reuse
+            cache.set(f"approved_percent_{file_id}", approved_percent)
 
-        context = {
-            "download_ready": True,
-            "filtered_filename": filtered_filename,
-            "tables_html": tables_html,
-            "download_url": filtered_instance.excel_file.url,
-            "total_count": total_count,
-            "approved_count": approved_count,
-            "pending_count": pending_count,
-            "approved_percent": approved_percent,
-            "pending_percent": pending_percent,
-        }
+            cache.set(f"result_context_{file_id}", {
+                "tables_html": tables_html,
+                "download_ready": True,
+                "download_url": uploaded_file.excel_file.url,
+                "filtered_filename": uploaded_file.file_name,
+                "total_count": total_count,
+                "approved_count": approved_count,
+                "pending_count": pending_count,
+                "approved_percent": approved_percent,
+                "pending_percent": pending_percent,
+            }, timeout=None)
+            cache.set(f"progress_{file_id}", 100)
 
-        return render(request, "dmt_filter.html", context)
+        except Exception as e:
+            print("Error in background thread:", e)
+            cache.set(f"progress_{file_id}", 100)
 
-    except Exception as e:
-        print("Traceback:", traceback.format_exc())
-        messages.error(request, f"Error during HRL filtration: {str(e)}")
-        return redirect("dmt_results_prompt", file_id=file_id)
-    
-    
+    threading.Thread(target=run_background).start()
+    return redirect("dmt_results_prompt", file_id=file_id)
+
+
+@login_required
 def dmt_results_prompt_view(request, file_id):
     upload = get_object_or_404(UploadedExcel, id=file_id, uploaded_by=request.user)
+    request.session["file_id"] = upload.id
+
+    # Folder match logic...
     selected_folder = request.session.get("selected_folder_name")
+    if getattr(settings, "ENFORCE_STRICT_FOLDER_MATCH", True):
+        request.session["selected_folder_name"] = upload.folder_name
+        selected_folder = upload.folder_name
 
-    print(f"📦 File selected: {upload.file_name} from folder {upload.folder_name}")
-    print(f"🌐 Session folder: {selected_folder}")
+    # Sheet preview
+    sheet_data, sheet_names, table_html = {}, [], ""
+    selected_sheet = request.GET.get("sheet")
+    stored_excel = upload.stored_excel
 
-    # ❌ Block manual tampering (accessing file from other folder)
-    if selected_folder and upload.folder_name != selected_folder:
-        messages.error(request, "This file does not belong to the selected folder.")
-        return redirect("upload_excel")
+    if stored_excel and stored_excel.data:
+        try:
+            sheet_data = json.loads(stored_excel.data)
+            if isinstance(sheet_data, dict):
+                sheet_names = list(sheet_data.keys())
+                if not selected_sheet or selected_sheet not in sheet_names:
+                    selected_sheet = sheet_names[0] if sheet_names else None
 
+                if selected_sheet:
+                    content = sheet_data[selected_sheet]
+                    if isinstance(content, list):
+                        df = pd.DataFrame(content)
+                    else:
+                        columns = content.get("columns", [])
+                        data = content.get("data", [])
+                        df = pd.DataFrame(data, columns=columns)
+
+                    table_html = df.to_html(classes="table table-bordered table-striped", index=False) \
+                        if not df.empty or columns else "<p class='text-muted'>Sheet is empty.</p>"
+        except Exception as e:
+            print("❌ Sheet render error:", e)
+            table_html = "<p class='text-danger'>Failed to load sheet preview.</p>"
+
+    # ✅ Filtration POST
     if request.method == "POST":
         posted_file_id = request.POST.get("file_id")
         version_choice = request.POST.get("version_choice")
+        
 
         if posted_file_id != str(upload.id):
             messages.error(request, "Mismatch in file ID. Please try again.")
             return redirect("upload_excel")
 
         if version_choice not in ["latest", "oldest", "all"]:
-            messages.error(request, "Please select a valid version option.")
+            messages.error(request, "Please select a valid version.")
             return redirect("dmt_results_prompt", file_id=file_id)
+        request.session["version_choice"] = version_choice
+        return redirect(f"/run-dmt-filtration/{file_id}/?version_choice={version_choice}")
 
-        return redirect("dmt_filtration_handler", file_id=file_id)
+    # ✅ Pull progress results from cache if any
+    approved_percent = cache.get(f"approved_percent_{file_id}")
 
-    return render(request, "dmt_results_prompt.html", {"upload": upload})
+    return render(request, "dmt_results_prompt.html", {
+        "upload": upload,
+        "sheet_names": sheet_names,
+        "selected_sheet": selected_sheet,
+        "table_html": table_html,
+        "approved_percent": approved_percent,  # <- Add this to show % on UI
+    })
+
 
 
 @login_required

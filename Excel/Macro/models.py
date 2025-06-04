@@ -33,15 +33,20 @@ class StoredExcel(models.Model):
         return f"Excel File in {self.folder_name} by {self.user.username}"
 
 class UploadedExcel(models.Model):
-    id = models.IntegerField(primary_key=True) 
+    id = models.IntegerField(primary_key=True)
     folder_name = models.CharField(max_length=255)
     excel_file = models.FileField(upload_to='uploads/%Y/%m/%d/%H-%M-%S/', blank=True, null=True, max_length=1000)
     file_name = models.CharField(max_length=255)
-    uploaded_at = models.DateTimeField(default=datetime.now)
+    uploaded_at = models.DateTimeField(default=now)
     timestamp = models.DateTimeField(default=now)
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=50, default='Processed')
     stored_excel = models.ForeignKey(StoredExcel, on_delete=models.CASCADE, null=True, blank=True)
+
+    # 🆕 Add these three fields
+    total_count = models.IntegerField(default=0)
+    approved_count = models.IntegerField(default=0)
+    pending_count = models.IntegerField(default=0)
 
     def save(self, *args, **kwargs):
         if not self.id:
@@ -53,11 +58,8 @@ class UploadedExcel(models.Model):
                     if new_id < eid:
                         break
                     new_id += 1
-                self.id = new_id  # Assign the lowest available ID
+                self.id = new_id
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.excel_file.name} - {self.uploaded_by.username}"
 
 class ExcelFile(models.Model):
     file = models.FileField(upload_to="excel_files/")

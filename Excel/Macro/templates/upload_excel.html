@@ -974,24 +974,24 @@
                                     <span class="badge bg-success">{{ upload.status|default:"Processed" }}</span>
                                 </td>
                                 <td>
-                                    <div class="table-actions">
-                                        {% if upload.stored_excel %}
-                                        <a href="{% url 'view_excel_sheet' upload.stored_excel.id %}" class="btn btn-sm btn-primary" title="View">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        {% else %}
-                                        <span class="btn btn-sm btn-secondary disabled" title="View Unavailable">
-                                            <i class="fas fa-eye-slash"></i>
-                                        </span>
-                                        {% endif %}
-                                        <a href="{% url 'download_file' upload.id %}" class="btn btn-sm btn-success" title="Download">
-                                            <i class="fas fa-download"></i>
-                                        </a>
-                                        <a href="{% url 'delete_file' upload.id %}" class="btn btn-sm btn-danger" title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
-                                    </div>
-                                </td>
+                            <td class="table-actions">
+                                <a href="{% url 'download_file' upload.id %}" class="btn btn-sm btn-success" title="Download">
+                                <i class="fas fa-download"></i>
+                                </a>
+                                <a href="{% url 'delete_file' upload.id %}" class="btn btn-sm btn-danger" title="Delete">
+                                <i class="fas fa-trash"></i>
+                                </a>
+{% if upload.status == "Filtered" %}
+  <a href="{% url 'dmt_filter' upload.id %}" class="btn btn-sm btn-success" title="View Filtered Results">
+    <i class="fas fa-check-circle"></i>
+  </a>
+{% else %}
+  <a href="{% url 'dmt_results_prompt' upload.id %}" class="btn btn-sm btn-warning" title="Run Filter">
+    <i class="fas fa-filter"></i>
+  </a>
+{% endif %}
+
+                            </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -1050,7 +1050,7 @@
                           data-time="{{ f.timestamp|time:'H:i:s' }}"
                           data-status="{{ f.status|default:'Processed' }}"
                           data-status-class="{% if f.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}"
-                          data-view-url="{% if f.stored_excel %}{% url 'view_excel_sheet' f.stored_excel.id %}{% endif %}"
+                          data-view-url="{% url 'dmt_results_prompt' f.id %}"
                           data-download-url="{% url 'download_file' f.id %}"
                           data-delete-url="{% url 'delete_file' f.id %}"
                         >
@@ -1069,14 +1069,24 @@
                 </span>
               </td>
               <td class="table-actions">
-                {% if file.stored_excel %}
-                  <a href="{% url 'view_excel_sheet' file.stored_excel.id %}" class="btn btn-sm btn-primary" title="View"><i class="fas fa-eye"></i></a>
-                {% else %}
-                  <span class="btn btn-sm btn-secondary disabled" title="View Unavailable"><i class="fas fa-eye-slash"></i></span>
-                {% endif %}
-                <a href="{% url 'download_file' file.id %}" class="btn btn-sm btn-success" title="Download"><i class="fas fa-download"></i></a>
-                <a href="{% url 'delete_file' file.id %}" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></a>
-              </td>
+  <a href="{% url 'download_file' file.id %}" class="btn btn-sm btn-success" title="Download">
+    <i class="fas fa-download"></i>
+  </a>
+
+  <a href="{% url 'delete_file' file.id %}" class="btn btn-sm btn-danger" title="Delete">
+    <i class="fas fa-trash"></i>
+  </a>
+
+{% if upload.status == "Filtered" %}
+  <a href="{% url 'dmt_filter' upload.id %}" class="btn btn-sm btn-success" title="View Filtered Results">
+    <i class="fas fa-check-circle"></i>
+  </a>
+{% else %}
+  <a href="{% url 'dmt_results_prompt' upload.id %}" class="btn btn-sm btn-warning" title="Run Filter">
+    <i class="fas fa-filter"></i>
+  </a>
+{% endif %}
+</td>
             </tr>
           {% endwith %}
         {% else %}
@@ -1102,7 +1112,7 @@
                           data-time="{{ f.timestamp|time:'H:i:s' }}"
                           data-status="{{ f.status|default:'Processed' }}"
                           data-status-class="{% if f.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}"
-                          data-view-url="{% if f.stored_excel %}{% url 'view_excel_sheet' f.stored_excel.id %}{% endif %}"
+                          data-view-url="{% url 'dmt_results_prompt' f.id %}"
                           data-download-url="{% url 'download_file' f.id %}"
                           data-delete-url="{% url 'delete_file' f.id %}"
                         >
@@ -1121,14 +1131,20 @@
                 </span>
               </td>
               <td class="table-actions">
-                {% if file.stored_excel %}
-                  <a href="{% url 'view_excel_sheet' file.stored_excel.id %}" class="btn btn-sm btn-primary" title="View"><i class="fas fa-eye"></i></a>
-                {% else %}
-                  <span class="btn btn-sm btn-secondary disabled" title="View Unavailable"><i class="fas fa-eye-slash"></i></span>
-                {% endif %}
-                <a href="{% url 'download_file' file.id %}" class="btn btn-sm btn-success" title="Download"><i class="fas fa-download"></i></a>
-                <a href="{% url 'delete_file' file.id %}" class="btn btn-sm btn-danger" title="Delete"><i class="fas fa-trash"></i></a>
-              </td>
+  <a href="{% url 'download_file' file.id %}" class="btn btn-sm btn-success" title="Download">
+    <i class="fas fa-download"></i>
+  </a>
+
+  <a href="{% url 'delete_file' file.id %}" class="btn btn-sm btn-danger" title="Delete">
+    <i class="fas fa-trash"></i>
+  </a>
+
+  <!-- ✅ Add this new "Run Filter" button -->
+  <a href="{% url 'dmt_results_prompt' file.id %}" class="btn btn-sm btn-warning" title="Run Filter">
+    <i class="fas fa-filter"></i>
+  </a>
+</td>
+
             </tr>
           {% endwith %}
         {% endif %}
