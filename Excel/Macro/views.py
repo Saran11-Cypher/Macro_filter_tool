@@ -491,9 +491,10 @@ def run_dmt_filtration_view(request, file_id):
                     total_count += len(df)
                     approved_count += (hrl_series == 'hrl found').sum()
                     pending_count += (hrl_series != 'hrl found').sum()
-
+#
             approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
             pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
+            
             uploaded_file.total_count = total_count
             uploaded_file.approved_count = approved_count
             uploaded_file.pending_count = pending_count
