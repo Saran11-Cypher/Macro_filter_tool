@@ -552,6 +552,28 @@
             text-align: center;
         }
 
+        th.status-cell, td.status-cell {
+            width: 130px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        th.table-actions, td.table-actions {
+            width: 140px;
+            text-align: center;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        .table .badge {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+
         /* Badge Styles */
         .badge {
             padding: 0.5rem 1rem;
@@ -957,8 +979,8 @@
                                 <th>Folder Name</th>
                                 <th>Date Uploaded</th>
                                 <th>Time Uploaded</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th class="status-cell">STATUS</th>
+                                <th class="table-actions">ACTIONS</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -973,8 +995,7 @@
                                 <td>
                                     <span class="badge bg-success">{{ upload.status|default:"Processed" }}</span>
                                 </td>
-                                <td>
-                            <td class="table-actions">
+                                <td class="table-actions">
                                 <a href="{% url 'download_file' upload.id %}" class="btn btn-sm btn-success" title="Download">
                                 <i class="fas fa-download"></i>
                                 </a>
@@ -1021,8 +1042,8 @@
         <th>File Names</th>
         <th>Date Uploaded</th>
         <th>Time Uploaded</th>
-        <th>Status</th>
-        <th>Actions</th>
+        <th class="status-cell">STATUS</th>
+        <th class="table-actions">ACTIONS</th>
       </tr>
     </thead>
     <tbody>
@@ -1064,7 +1085,7 @@
               <td class="date-uploaded">{{ file.timestamp|date:"m/d/Y" }}</td>
               <td class="time-uploaded">{{ file.timestamp|time:"H:i:s" }}</td>
               <td class="status-cell">
-                <span class="badge {% if file.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}">
+                <span class="badge bg-info {% if file.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}">
                   {{ file.status|default:"Processed" }}
                 </span>
               </td>
@@ -1077,16 +1098,17 @@
     <i class="fas fa-trash"></i>
   </a>
 
-{% if upload.status == "Filtered" %}
-  <a href="{% url 'dmt_filter' upload.id %}" class="btn btn-sm btn-success" title="View Filtered Results">
-    <i class="fas fa-check-circle"></i>
-  </a>
-{% else %}
-  <a href="{% url 'dmt_results_prompt' upload.id %}" class="btn btn-sm btn-warning" title="Run Filter">
-    <i class="fas fa-filter"></i>
-  </a>
-{% endif %}
+  {% if file.status == "Filtered" %}
+    <a href="{% url 'dmt_filter' file.id %}" class="btn btn-sm btn-success" title="View Filtered Results">
+      <i class="fas fa-check-circle"></i>
+    </a>
+  {% else %}
+    <a href="{% url 'dmt_results_prompt' file.id %}" class="btn btn-sm btn-warning" title="Run Filter">
+      <i class="fas fa-filter"></i>
+    </a>
+  {% endif %}
 </td>
+
             </tr>
           {% endwith %}
         {% else %}
@@ -1126,11 +1148,11 @@
               <td class="date-uploaded">{{ file.timestamp|date:"m/d/Y" }}</td>
               <td class="time-uploaded">{{ file.timestamp|time:"H:i:s" }}</td>
               <td class="status-cell">
-                <span class="badge {% if file.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}">
+                <span class="badge bg-info {% if file.status == 'Filtered' %}bg-warning{% else %}bg-success{% endif %}">
                   {{ file.status|default:"Processed" }}
                 </span>
               </td>
-              <td class="table-actions">
+             <td class="table-actions">
   <a href="{% url 'download_file' file.id %}" class="btn btn-sm btn-success" title="Download">
     <i class="fas fa-download"></i>
   </a>
@@ -1139,12 +1161,16 @@
     <i class="fas fa-trash"></i>
   </a>
 
-  <!-- ✅ Add this new "Run Filter" button -->
-  <a href="{% url 'dmt_results_prompt' file.id %}" class="btn btn-sm btn-warning" title="Run Filter">
-    <i class="fas fa-filter"></i>
-  </a>
+  {% if file.status == "Filtered" %}
+    <a href="{% url 'dmt_filter' file.id %}" class="btn btn-sm btn-success" title="View Filtered Results">
+      <i class="fas fa-check-circle"></i>
+    </a>
+  {% else %}
+    <a href="{% url 'dmt_results_prompt' file.id %}" class="btn btn-sm btn-warning" title="Run Filter">
+      <i class="fas fa-filter"></i>
+    </a>
+  {% endif %}
 </td>
-
             </tr>
           {% endwith %}
         {% endif %}

@@ -433,269 +433,8 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-    </style>
-</head>
-<body>
-    <!-- Background animation -->
-    <div class="bg-animation">
-        <div class="floating-shape shape-1"></div>
-        <div class="floating-shape shape-2"></div>
-        <div class="floating-shape shape-3"></div>
-        <div class="floating-shape shape-4"></div>
-    </div>
 
-    <!-- Main content -->
-    <div class="main-wrapper">
-        <div class="merge-container">
-            <!-- Header -->
-            <div class="header-section">
-                <div class="header-icon">
-                    <i class="fas fa-code-merge"></i>
-                </div>
-                <h2 class="header-title">HTML File Merger</h2>
-                <p class="header-subtitle">Combine multiple HTML files into one seamlessly</p>
-            </div>
-
-                <!-- Form -->
-        <form method="post" enctype="multipart/form-data" class="form-container" id="mergeForm">
-            {% csrf_token %}
-
-            <!-- Folder Selection -->
-            <div class="form-group">
-                <label class="form-label">
-                    <i class="fas fa-folder-open me-2"></i>Select Folder Containing HTML Files
-                </label>
-                <div class="file-input-wrapper" onclick="document.getElementById('folderInput').click()">
-                    <input type="file" id="folderInput" name="folder" webkitdirectory directory multiple required hidden>  <!-- ✅ add `hidden` -->
-                    <div class="file-input-content">
-                        <div class="file-input-icon">
-                            <i class="fas fa-folder"></i>
-                        </div>
-                        <div class="file-input-text">Click to select a folder</div>
-                        <div class="file-input-subtext">All HTML files in the folder will be merged</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Batch Size -->
-            <div class="form-group">
-                <label class="form-label"><i class="fas fa-layer-group me-2"></i>Batch Size</label>
-                <input type="number" name="batch_size" class="form-control" min="1" required placeholder="e.g. 10">
-            </div>
-
-            <!-- Output Folder Name -->
-            <div class="form-group">
-                <label class="form-label"><i class="fas fa-folder-plus me-2"></i>Output Folder Name</label>
-                <input type="text" name="output_name" class="form-control" required placeholder="e.g. MyMergeFolder">
-            </div>
-
-            <!-- Output Folder Info -->
-            {% if final_output_folder %}
-            <div class="alert alert-success mt-3">
-                <i class="fas fa-folder me-2"></i>Output Folder: <strong>{{ final_output_folder }}</strong>
-            </div>
-            {% endif %}
-
-            <!-- Progress Bar -->
-            <div class="progress-container" id="progressContainer" style="display: none;">
-                <div class="progress">
-                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
-                </div>
-                <small class="text-muted mt-2 d-block">Processing files...</small>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="btn-merge" id="mergeBtn">
-                <div class="spinner"></div>
-                <i class="fas fa-code-merge"></i>
-                <span>Run Merge</span>
-            </button>
-        </form>
-
-
-            <!-- Messages -->
-            <div id="messagesContainer">
-                <!-- Example Success Message -->
-                <div class="alert alert-success fade-in" style="display: none;" id="successAlert">
-                    <i class="fas fa-check-circle me-2"></i>
-                    Files merged successfully!
-                </div>
-                
-                <!-- Example Error Message -->
-                <div class="alert alert-danger fade-in" style="display: none;" id="errorAlert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Error occurred during merge process.
-                </div>
-            </div>
-
-            {% if final_output_folder %}
-<div id="downloadSection" style="display: block;">
-    <div class="text-center mt-4">
-        <a href="{{ MEDIA_URL }}{{ final_output_folder }}/Final_{{ final_output_folder }}.html"
-           class="btn-download"
-           id="downloadBtn"
-           download>
-            <i class="fas fa-download"></i>
-            Download Merged File
-        </a>
-    </div>
-</div>
-{% endif %}
-
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // File display update
-        function updateFileDisplay(input) {
-            const container = document.getElementById('selectedFiles');
-            const files = input.files;
-            
-            if (files.length > 0) {
-                let html = '<div class="selected-files-list mt-3">';
-                html += '<small class="text-muted"><i class="fas fa-files me-1"></i>Selected files:</small><br>';
-                
-                for (let i = 0; i < files.length; i++) {
-                    html += `<span class="badge bg-primary me-2 mb-1">
-                        <i class="fas fa-file-code me-1"></i>${files[i].name}
-                    </span>`;
-                }
-                html += '</div>';
-                container.innerHTML = html;
-                container.classList.add('fade-in');
-            } else {
-                container.innerHTML = '';
-            }
-        }
-
-        // Form submission with animation
-        document.getElementById('mergeForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const btn = document.getElementById('mergeBtn');
-            const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
-            
-            // Start loading animation
-            btn.classList.add('loading');
-            progressContainer.style.display = 'block';
-            
-            // Simulate progress
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 30;
-                if (progress > 90) progress = 90;
-                progressBar.style.width = progress + '%';
-            }, 200);
-            
-            // Simulate processing (replace with actual form submission)
-            setTimeout(() => {
-                clearInterval(interval);
-                progressBar.style.width = '100%';
-                
-                setTimeout(() => {
-                    btn.classList.remove('loading');
-                    progressContainer.style.display = 'none';
-                    progressBar.style.width = '0%';
-                    
-                    // Show success message and download button
-                    showMessage('success', 'Files merged successfully!');
-                    showDownloadButton();
-                }, 500);
-            }, 3000);
-        });
-
-        // Message display function
-        function showMessage(type, text) {
-            const container = document.getElementById('messagesContainer');
-            const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
-            
-            const alert = document.createElement('div');
-            alert.className = `alert ${alertClass} fade-in`;
-            alert.innerHTML = `<i class="fas ${icon} me-2"></i>${text}`;
-            
-            container.appendChild(alert);
-            
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                alert.style.animation = 'fadeOut 0.5s ease-out';
-                setTimeout(() => alert.remove(), 500);
-            }, 5000);
-        }
-
-        // Show download button
-        function showDownloadButton() {
-            const downloadSection = document.getElementById('downloadSection');
-            downloadSection.style.display = 'block';
-            
-            // Set download link (replace with actual file path)
-            const downloadBtn = document.getElementById('downloadBtn');
-            downloadBtn.href = '#'; // Replace with actual download URL
-        }
-
-        // Drag and drop functionality
-        const fileWrapper = document.querySelector('.file-input-wrapper');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            fileWrapper.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            fileWrapper.addEventListener(eventName, highlight, false);
-        });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            fileWrapper.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight(e) {
-            fileWrapper.style.borderColor = 'var(--primary-color)';
-            fileWrapper.style.background = 'rgba(80, 82, 181, 0.1)';
-        }
-        
-        function unhighlight(e) {
-            fileWrapper.style.borderColor = 'var(--primary-light)';
-            fileWrapper.style.background = 'rgba(80, 82, 181, 0.05)';
-        }
-        
-        fileWrapper.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            const fileInput = document.getElementById('fileInput');
-            fileInput.files = files;
-            updateFileDisplay(fileInput);
-        }
-
-        // Add some interactive effects
-        document.addEventListener('DOMContentLoaded', function() {
-            // Parallax effect for floating shapes
-            document.addEventListener('mousemove', function(e) {
-                const shapes = document.querySelectorAll('.floating-shape');
-                const x = e.clientX / window.innerWidth;
-                const y = e.clientY / window.innerHeight;
-                
-                shapes.forEach((shape, index) => {
-                    const speed = (index + 1) * 0.3;
-                    const xPos = (x * speed * 20) - 10;
-                    const yPos = (y * speed * 20) - 10;
-                    
-                    shape.style.transform = `translate(${xPos}px, ${yPos}px)`;
-                });
-            });
-        });
-    </script>
-
-    <style>
-        @keyframes fadeOut {
+                @keyframes fadeOut {
             from { opacity: 1; transform: translateY(0); }
             to { opacity: 0; transform: translateY(-20px); }
         }
@@ -708,6 +447,302 @@
             from { opacity: 0; transform: translateX(-20px); }
             to { opacity: 1; transform: translateX(0); }
         }
+
+        .btn-dashboard {
+    background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+    color: white;
+    padding: 12px 30px;
+    font-weight: 600;
+    font-size: 1.05rem;
+    border: none;
+    border-radius: 50px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 15px 30px rgba(80, 82, 181, 0.3);
+    transition: all 0.3s ease, transform 0.2s;
+    animation: bounceIn 0.8s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-dashboard::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
+}
+
+.btn-dashboard:hover::before {
+    left: 100%;
+}
+
+.btn-dashboard:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px rgba(80, 82, 181, 0.4);
+    color: white;
+}
+
     </style>
+</head>
+<body>
+    <!-- Background animation -->
+    <div class="bg-animation">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        <div class="floating-shape shape-4"></div>
+    </div>
+
+    <!--go to dashboard-->
+     <div class="text-center mt-4">
+    <a href="{% url 'dashboard' %}" class="btn-dashboard">
+        Go to Dashboard
+    </a>
+</div>
+
+    <!-- Main content -->
+    <div class="main-wrapper">
+        <div class="merge-container">
+            <!-- Header -->
+            <div class="header-section">
+                <div class="header-icon">
+                    <i class="fas fa-code-merge"></i>
+                </div>
+                <h2 class="header-title">HTML File Merger</h2>
+                <p class="header-subtitle">Combine multiple HTML files into one seamlessly</p>
+            </div>
+<form method="post" class="form-container" id="mergeForm">
+    {% csrf_token %}
+
+    <!-- Batch Size -->
+    <div class="form-group">
+        <label class="form-label"><i class="fas fa-layer-group me-2"></i>Batch Size</label>
+        <input type="number" name="batch_size" class="form-control" min="1" required placeholder="e.g. 500">
+    </div>
+
+    <!-- Output Folder Name -->
+    <div class="form-group">
+        <label class="form-label"><i class="fas fa-folder-plus me-2"></i>Output Folder Name</label>
+        <input type="text" name="output_name" class="form-control" required placeholder="e.g. Run_01">
+    </div>
+
+    {% if final_output_folder %}
+    <div class="alert alert-success mt-3">
+        <i class="fas fa-folder me-2"></i>
+        Output Folder: <strong>{{ final_output_folder }}</strong><br>
+        <a class="btn btn-sm btn-success mt-2" href="{{ MEDIA_URL }}{{ final_output_folder }}/Final_{{ final_output_folder }}.html" download>
+            <i class="fas fa-download me-1"></i> Download Final HTML
+        </a>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn-merge mt-4">
+        <i class="fas fa-code-merge me-2"></i> Merge HTML Files
+    </button>
+</form>
+
+<!--Counts of files-->
+{% if num_files > 0 %}
+    <div class="alert alert-info mt-3">
+        <i class="fas fa-folder-open me-2"></i>
+        Found <strong>{{ num_files }}</strong> HTML files in <code>media/Html_files/</code>.
+    </div>
+{% else %}
+    <div class="alert alert-warning mt-3">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        No HTML files found in <code>media/Html_files/</code>. Please upload them manually to that folder.
+    </div>
+{% endif %}
+
+<!-- Messages -->
+<div id="messagesContainer">
+<!-- Example Success Message -->
+<div class="alert alert-success fade-in" style="display: none;" id="successAlert">
+    <i class="fas fa-check-circle me-2"></i>
+    Files merged successfully!
+</div>
+
+<!-- Example Error Message -->
+<div class="alert alert-danger fade-in" style="display: none;" id="errorAlert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    Error occurred during merge process.
+</div>
+</div>
+
+{% if final_output_folder %}
+<div id="downloadSection" style="display: block;">
+<div class="text-center mt-4">
+<a href="{{ MEDIA_URL }}{{ final_output_folder }}/Final_{{ final_output_folder }}.html"
+class="btn-download"
+id="downloadBtn"
+download>
+<i class="fas fa-download"></i>
+Download Merged File
+</a>
+</div>
+</div>
+{% endif %}
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // === File Display Update ===
+    function updateFileDisplay(input) {
+        const container = document.getElementById('selectedFiles');
+        const files = input?.files;
+
+        if (!container || !files) return;
+
+        if (files.length > 0) {
+            let html = '<div class="selected-files-list mt-3">';
+            html += '<small class="text-muted"><i class="fas fa-files me-1"></i>Selected files:</small><br>';
+            
+            for (let i = 0; i < files.length; i++) {
+                html += `<span class="badge bg-primary me-2 mb-1">
+                    <i class="fas fa-file-code me-1"></i>${files[i].name}
+                </span>`;
+            }
+            html += '</div>';
+            container.innerHTML = html;
+            container.classList.add('fade-in');
+        } else {
+            container.innerHTML = '';
+        }
+    }
+
+    // === Form Submission with Progress Simulation ===
+    const form = document.getElementById('mergeForm');
+    const btn = document.getElementById('mergeBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+
+    if (form && btn && progressContainer && progressBar) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            btn.classList.add('loading');
+            progressContainer.style.display = 'block';
+
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 30;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = progress + '%';
+            }, 200);
+
+            setTimeout(() => {
+                clearInterval(interval);
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    btn.classList.remove('loading');
+                    progressContainer.style.display = 'none';
+                    progressBar.style.width = '0%';
+
+                    showMessage('success', 'Files merged successfully!');
+                    showDownloadButton();
+                }, 500);
+            }, 3000);
+        });
+    }
+
+    // === Message Alert ===
+    function showMessage(type, text) {
+        const container = document.getElementById('messagesContainer');
+        if (!container) return;
+
+        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle';
+
+        const alert = document.createElement('div');
+        alert.className = `alert ${alertClass} fade-in`;
+        alert.innerHTML = `<i class="fas ${icon} me-2"></i>${text}`;
+
+        container.appendChild(alert);
+
+        setTimeout(() => {
+            alert.style.animation = 'fadeOut 0.5s ease-out';
+            setTimeout(() => alert.remove(), 500);
+        }, 5000);
+    }
+
+    // === Show Download Button ===
+    function showDownloadButton() {
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        if (downloadSection && downloadBtn) {
+            downloadSection.style.display = 'block';
+            downloadBtn.href = '#'; // Update with actual download URL
+        } else {
+            console.warn("❌ downloadSection or downloadBtn not found in DOM.");
+        }
+    }
+
+    // === Drag & Drop Functionality ===
+    const fileWrapper = document.querySelector('.file-input-wrapper');
+    const fileInput = document.getElementById('fileInput');
+
+    if (fileWrapper && fileInput) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            fileWrapper.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            fileWrapper.addEventListener(eventName, () => highlight(fileWrapper), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            fileWrapper.addEventListener(eventName, () => unhighlight(fileWrapper), false);
+        });
+
+        fileWrapper.addEventListener('drop', handleDrop, false);
+
+        function highlight(el) {
+            el.style.borderColor = 'var(--primary-color)';
+            el.style.background = 'rgba(80, 82, 181, 0.1)';
+        }
+
+        function unhighlight(el) {
+            el.style.borderColor = 'var(--primary-light)';
+            el.style.background = 'rgba(80, 82, 181, 0.05)';
+        }
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            updateFileDisplay(fileInput);
+        }
+    }
+
+    // === Parallax Background ===
+    document.addEventListener('mousemove', function (e) {
+        const shapes = document.querySelectorAll('.floating-shape');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+
+        shapes.forEach((shape, index) => {
+            const speed = (index + 1) * 0.3;
+            const xPos = (x * speed * 20) - 10;
+            const yPos = (y * speed * 20) - 10;
+            shape.style.transform = `translate(${xPos}px, ${yPos}px)`;
+        });
+    });
+});
+</script>
 </body>
 </html>

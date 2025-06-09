@@ -1,3 +1,4 @@
+{% load custom_filters %}
 {% load static %}
 {% block content %}
 <!DOCTYPE html>
@@ -486,6 +487,23 @@
     transform: translateY(-2px);
     text-decoration: none;
   }
+  .stylish-progress {
+  height: 12px;
+  background-color: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
+#progressBar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(to right, #38ef7d, #11998e);
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+  text-align: center;
+  transition: width 0.4s ease-in-out;
+  border-radius: 6px;
+}
   </style>
 </head>
 <body style="background: linear-gradient(135deg, #1a0d20 0%, #2d1436 50%, #4a1a5c 100%); color: #e8d5f0; font-family: 'Exo 2', sans-serif;">
@@ -511,6 +529,7 @@
           </div>
 
           <!-- 🔄 Version Form with Progress -->
+           <div class="position-relative">
           <form method="post" action="{% url 'dmt_filtration_handler' upload.id %}" id="versionForm" data-upload-id="{{ upload.id }}" onsubmit="handleSubmit(event)">
             {% csrf_token %}
             <input type="hidden" name="file_id" value="{{ upload.id }}">
@@ -540,20 +559,22 @@
               </a>
             </div>
           </form>
+          <!-- 🌈 Gradient Progress Bar Floating Centered -->
+          <div id="floatingProgressContainer" class="w-100 d-none mt-3">
+            <div class="text-center text-light fw-semibold mb-2" style="font-size: 1.1rem;">
+              LOADING...
+            </div>
+            <div class="progress stylish-progress">
+              <div id="progressBar" class="progress-bar" role="progressbar">0%</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<!-- 🌈 Gradient Progress Bar Floating Centered -->
-<div id="floatingProgressContainer" class="position-fixed top-50 start-50 translate-middle w-75 d-none" style="z-index: 9999;">
-  <div class="text-center text-light fw-semibold mb-2" style="font-size: 1.2rem;">
-    LOADING...
-  </div>
-  <div class="progress stylish-progress">
-    <div id="progressBar" class="progress-bar" role="progressbar">0%</div>
-  </div>
 </div>
+
 
 
 {% if approved_percent is not None %}
@@ -562,29 +583,38 @@
   </div>
 {% endif %}
 <!-- 🟪 Full-Width Sheet Preview Section -->
-{% if table_html %}
+{% if table_htmls %}
 <div class="container-fluid px-4 mt-1">
   <h4 class="mb-3 text-center text-light">
-    <i class="fas fa-table me-2"></i>Sheet Preview ({{ selected_sheet }})
+    <i class="fas fa-table me-2"></i>Sheet Preview
   </h4>
 
   {% if sheet_names|length > 1 %}
+  <!-- Sheet Tabs -->
   <div class="mb-3 text-center">
     {% for sheet in sheet_names %}
-    <a href="?sheet={{ sheet|urlencode }}" class="btn {% if sheet == selected_sheet %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm me-2">
-      {{ sheet }}
-    </a>
+      <button type="button"
+              class="btn btn-sm {% if forloop.first %}btn-primary{% else %}btn-outline-primary{% endif %} sheet-tab-btn me-2"
+              data-sheet="{{ sheet|slugify }}">
+        {{ sheet }}
+      </button>
     {% endfor %}
   </div>
   {% endif %}
 
-  <div class="table-responsive">
-    <div class="excel-table-wrapper">
-      {{ table_html|safe }}
-    </div>
+  <!-- Sheet Contents -->
+  <div id="sheetTabContent" class="table-responsive">
+    {% for sheet in sheet_names %}
+      <div class="excel-table-wrapper sheet-panel"
+           id="sheet-panel-{{ sheet|slugify }}"
+           style="{% if not forloop.first %}display: none;{% endif %}">
+        {{ table_htmls|get_item:sheet|safe }}
+      </div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}
+
 
 
     <!-- Bootstrap JS Bundle -->
@@ -664,6 +694,36 @@ document.addEventListener('DOMContentLoaded', function () {
     setTimeout(() => tableResponsive.classList.add('pulse-glow'), 1000);
     setTimeout(() => tableResponsive.classList.remove('pulse-glow'), 7000);
   }
+});
+document.addEventListener("DOMContentLoaded", function () {
+  const buttons = document.querySelectorAll(".sheet-tab-btn");
+  const panels = document.querySelectorAll(".sheet-panel");
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Hide all panels
+      panels.forEach(panel => panel.style.display = "none");
+
+      // Show the selected panel
+      const targetPanel = document.getElementById("sheet-panel-" + btn.dataset.sheet);
+      if (targetPanel) {
+        targetPanel.style.display = "block";
+        targetPanel.scrollIntoView({ behavior: "instant", block: "nearest" }); // ⛔ prevent jump
+      }
+
+      // Update button classes
+      buttons.forEach(b => {
+        b.classList.remove("btn-primary");
+        b.classList.add("btn-outline-primary");
+      });
+
+      btn.classList.add("btn-primary");
+      btn.classList.remove("btn-outline-primary");
+    });
+  });
 });
 </script>
 </body>

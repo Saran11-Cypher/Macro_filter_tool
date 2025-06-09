@@ -416,22 +416,37 @@ def dmt_filter_view(request, file_id):
                     for sheet in xls.sheet_names
                 }
 
+                # ✅ Add the count fields from DB
+                total = filtered_file.total_count
+                approved = filtered_file.approved_count
+                pending = filtered_file.pending_count
+
+                approved_percent = round((approved / total) * 100, 2) if total else 0
+                pending_percent = round((pending / total) * 100, 2) if total else 0
+
                 context = {
                     "tables_html": tables_html,
                     "download_ready": True,
                     "download_url": filtered_file.excel_file.url,
                     "filtered_filename": filtered_file.file_name,
+                    "total_count": total,
+                    "approved_count": approved,
+                    "pending_count": pending,
+                    "approved_percent": approved_percent,
+                    "pending_percent": pending_percent,
                 }
 
-                cache.set(f"result_context_{file_id}", context, timeout=86400)
+                cache.set(f"result_context_{file_id}", context, timeout=86400)  # optional
             except Exception as e:
                 messages.error(request, f"Failed to rebuild filtered results: {e}")
                 return redirect("upload_excel")
         else:
             messages.error(request, "The filtration results are not available or may have expired.")
             return redirect("upload_excel")
+
     print("🔍 Filter context keys:", context.keys())
     return render(request, "dmt_filter.html", context)
+
 
 @require_GET
 def get_progress_status(request, file_id):
@@ -491,7 +506,7 @@ def run_dmt_filtration_view(request, file_id):
                     total_count += len(df)
                     approved_count += (hrl_series == 'hrl found').sum()
                     pending_count += (hrl_series != 'hrl found').sum()
-#
+                    
             approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
             pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
             
@@ -536,8 +551,8 @@ def dmt_results_prompt_view(request, file_id):
         selected_folder = upload.folder_name
 
     # Sheet preview
-    sheet_data, sheet_names, table_html = {}, [], ""
-    selected_sheet = request.GET.get("sheet")
+
+    sheet_data, sheet_names, table_htmls = {}, [], {}
     stored_excel = upload.stored_excel
 
     if stored_excel and stored_excel.data:
@@ -545,23 +560,21 @@ def dmt_results_prompt_view(request, file_id):
             sheet_data = json.loads(stored_excel.data)
             if isinstance(sheet_data, dict):
                 sheet_names = list(sheet_data.keys())
-                if not selected_sheet or selected_sheet not in sheet_names:
-                    selected_sheet = sheet_names[0] if sheet_names else None
-
-                if selected_sheet:
-                    content = sheet_data[selected_sheet]
+                for sheet in sheet_names:
+                    content = sheet_data[sheet]
                     if isinstance(content, list):
                         df = pd.DataFrame(content)
                     else:
                         columns = content.get("columns", [])
                         data = content.get("data", [])
                         df = pd.DataFrame(data, columns=columns)
-
-                    table_html = df.to_html(classes="table table-bordered table-striped", index=False) \
+                    html = df.to_html(classes="table table-bordered table-striped", index=False) \
                         if not df.empty or columns else "<p class='text-muted'>Sheet is empty.</p>"
+                    table_htmls[sheet] = html
         except Exception as e:
             print("❌ Sheet render error:", e)
-            table_html = "<p class='text-danger'>Failed to load sheet preview.</p>"
+            table_htmls = {"Error": "<p class='text-danger'>Failed to load sheet preview.</p>"}
+
 
     # ✅ Filtration POST
     if request.method == "POST":
@@ -585,8 +598,7 @@ def dmt_results_prompt_view(request, file_id):
     return render(request, "dmt_results_prompt.html", {
         "upload": upload,
         "sheet_names": sheet_names,
-        "selected_sheet": selected_sheet,
-        "table_html": table_html,
+        "table_htmls": table_htmls,
         "approved_percent": approved_percent,  # <- Add this to show % on UI
     })
 
@@ -626,8 +638,14 @@ def delete_file(request, file_id):
     return redirect("upload_excel")
 
 
+@login_required
 def html_merge_view(request):
     final_output_folder = None
+    input_folder = os.path.join(settings.MEDIA_ROOT, "Html_files")
+    num_files = 0
+
+    if os.path.exists(input_folder):
+        num_files = len([f for f in os.listdir(input_folder) if f.endswith(".html")])
 
     if request.method == "POST":
         batch_size = request.POST.get("batch_size")
@@ -637,48 +655,36 @@ def html_merge_view(request):
             messages.error(request, "Output folder name cannot be empty.")
         elif not batch_size:
             messages.error(request, "Batch size is required.")
+        elif not os.path.exists(input_folder):
+            messages.error(request, "The folder 'media/html_input/' does not exist.")
         else:
             try:
                 batch_size = int(batch_size)
-                uploaded_files = request.FILES.getlist("folder")
 
-                if not uploaded_files:
-                    messages.error(request, "No files received.")
-                    return render(request, "merge_html.html", {})
+                if num_files == 0:
+                    messages.warning(request, "No HTML files found in 'media/html_input/'.")
+                    return render(request, "merge_html.html", {"num_files": 0})
 
-                # Save uploaded files to temp folder
-                input_folder = os.path.join(settings.MEDIA_ROOT, "temp_upload")
-                os.makedirs(input_folder, exist_ok=True)
-
-                for f in uploaded_files:
-                    file_path = os.path.join(input_folder, f.name)
-                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                    with open(file_path, "wb+") as dest:
-                        for chunk in f.chunks():
-                            dest.write(chunk)
-
-                # Final output path using user-defined folder
-                output_folder = os.path.join(settings.MEDIA_ROOT, run_id)
-                os.makedirs(output_folder, exist_ok=True)
-
-                # Merge logic
                 merge_files_in_batches(
                     input_folder=input_folder,
                     base_output_folder=settings.MEDIA_ROOT,
-                    num_files=len(uploaded_files),
+                    num_files=num_files,
                     batch_size=batch_size,
                     run_id=run_id
                 )
 
-                messages.success(request, f"Merge complete. Output saved in: {run_id}/")
+                messages.success(request, f"Merged {num_files} files into batches and final output.")
                 final_output_folder = run_id
 
             except Exception as e:
                 messages.error(request, f"Merge failed: {str(e)}")
 
     return render(request, "merge_html.html", {
-        "final_output_folder": final_output_folder
+        "final_output_folder": final_output_folder,
+        "num_files": num_files
     })
+
+
 
 
 
