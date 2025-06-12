@@ -124,31 +124,18 @@ print("🔧 process_hrl_files loaded from utils.py ✅")
 def process_hrl_files(excel_path, upload_folder, version_choice, progress_callback=None):
     import traceback
     import time
-    import threading
     from openpyxl import load_workbook
     import pandas as pd
     from .utils import normalize_text, categorize_files, find_matching_file
     import os
+    import shutil
     from openpyxl.styles import PatternFill
-
-    def smooth_progress(start=0, end=100, duration=30):
-        steps = end - start
-        interval = duration / steps if steps else 0.3
-        def run():
-            for i in range(start, end + 1):
-                if progress_callback:
-                    progress_callback(i)
-                time.sleep(interval)
-        threading.Thread(target=run, daemon=True).start()
 
     try:
         print("🔍 ENTERED process_hrl_files")
 
         from django.conf import settings
         from datetime import datetime
-
-        # Start smooth progress bar
-        smooth_progress(0, 100, duration=30)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
@@ -211,6 +198,9 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
             uploaded_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
             ws_main.append([config_type, len(uploaded_files), "Pending", "Pending"])
 
+        total_rows = sum(len(df_bal[df_bal["Config Type"] == config_type]) for config_type in selected_folders)
+        processed_rows = 0
+
         for config_type, folder_path in selected_folders.items():
             print(f"🔧 Processing config_type: {config_type}")
             single_version_files, multi_version_files = categorize_files(folder_path)
@@ -244,6 +234,10 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
                     print(f"❌ Failed HRL update at row {index}: {e}")
                     traceback.print_exc()
 
+                processed_rows += 1
+                if progress_callback:
+                    progress_callback(int((processed_rows / total_rows) * 95))  # Leave last 5% for final save
+
         ws_bal.delete_rows(2, ws_bal.max_row)
         for col_idx, col_name in enumerate(df_bal.columns, start=1):
             ws_bal.cell(row=1, column=col_idx, value=col_name)
@@ -255,6 +249,9 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
         filtered_excel_path = os.path.join(HRL_PARENT_FOLDER, os.path.basename(excel_path))
         wb.save(filtered_excel_path)
         wb.close()
+
+        if progress_callback:
+            progress_callback(100)
 
         print("✅ Returning filtered Excel path:", filtered_excel_path)
         return filtered_excel_path
