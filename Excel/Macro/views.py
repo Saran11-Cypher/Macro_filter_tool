@@ -2,18 +2,16 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout,get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.core.files.base import ContentFile
-from datetime import datetime
 from django.core.files.storage import default_storage
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 import os, random,json, xlrd, math
-from .utils import process_hrl_files,is_file_locked
+from .utils import process_hrl_files
 from django.core.files import File
 from io import BytesIO
 from django.views.decorators.http import require_GET
 import pandas as pd
-import shutil,os, re, traceback, ntpath, threading
+import os, re, traceback, ntpath, threading, time,sys
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.http import JsonResponse
@@ -24,6 +22,7 @@ from django.conf import settings
 from django.shortcuts import render, get_object_or_404
 from .forms import ExcelUploadForm
 from django.utils.timezone import now
+from django.utils import timezone
 from .html_merge import merge_files_in_batches
 from .forms import HTMLMergeForm
 from django.http import FileResponse, Http404, HttpResponse
@@ -402,55 +401,72 @@ def upload_excel(request):
 
 @login_required
 def dmt_filter_view(request, file_id):
-    context = cache.get(f"result_context_{file_id}")
+    print("🧪 Skipping cache — loading from DB directly")
+    try:
+        filtered_file = UploadedExcel.objects.get(id=file_id)
+        print("🟢 DB object retrieved:", filtered_file)
+        print("🟢 Status =", filtered_file.status)
+        print("🟢 File path =", filtered_file.excel_file.path)
+        print("🟢 File exists:", default_storage.exists(filtered_file.excel_file.name))
 
-    if not context:
-        # 🔍 Try to find the filtered file
-        filtered_file = get_object_or_404(UploadedExcel, id=file_id, status='Filtered', uploaded_by=request.user)
+        if filtered_file.status != "Filtered":
+            messages.warning(request, "The filtration results are not ready yet. Please wait.")
+            return redirect("dmt_results_prompt", file_id=file_id)
 
-        if filtered_file.excel_file and default_storage.exists(filtered_file.excel_file.name):
-            try:
-                xls = pd.ExcelFile(filtered_file.excel_file.path)
-                tables_html = {
-                    sheet: xls.parse(sheet).to_html(classes="table table-bordered table-sm", index=False)
-                    for sheet in xls.sheet_names
-                }
-
-                # ✅ Add the count fields from DB
-                total = filtered_file.total_count
-                approved = filtered_file.approved_count
-                pending = filtered_file.pending_count
-
-                approved_percent = round((approved / total) * 100, 2) if total else 0
-                pending_percent = round((pending / total) * 100, 2) if total else 0
-
-                context = {
-                    "tables_html": tables_html,
-                    "download_ready": True,
-                    "download_url": filtered_file.excel_file.url,
-                    "filtered_filename": filtered_file.file_name,
-                    "total_count": total,
-                    "approved_count": approved,
-                    "pending_count": pending,
-                    "approved_percent": approved_percent,
-                    "pending_percent": pending_percent,
-                }
-
-                cache.set(f"result_context_{file_id}", context, timeout=86400)  # optional
-            except Exception as e:
-                messages.error(request, f"Failed to rebuild filtered results: {e}")
-                return redirect("upload_excel")
-        else:
-            messages.error(request, "The filtration results are not available or may have expired.")
+        if not filtered_file.excel_file or not default_storage.exists(filtered_file.excel_file.name):
+            messages.error(request, "The filtered Excel file is missing or expired.")
             return redirect("upload_excel")
 
-    print("🔍 Filter context keys:", context.keys())
-    return render(request, "dmt_filter.html", context)
+        xls = pd.ExcelFile(filtered_file.excel_file.path)
+        tables_html = {
+            sheet: xls.parse(sheet).to_html(classes="table table-bordered table-sm", index=False)
+            for sheet in xls.sheet_names
+        }
 
+        total = filtered_file.total_count
+        approved = filtered_file.approved_count
+        pending = filtered_file.pending_count
+
+        approved_percent = round((approved / total) * 100, 2) if total else 0
+        pending_percent = round((pending / total) * 100, 2) if total else 0
+
+        context = {
+            "tables_html": tables_html,
+            "download_ready": True,
+            "download_url": filtered_file.excel_file.url,
+            "filtered_filename": filtered_file.file_name,
+            "total_count": total,
+            "approved_count": approved,
+            "pending_count": pending,
+            "approved_percent": approved_percent,
+            "pending_percent": pending_percent,
+            "filtration_time": filtered_file.filtration_time or "N/A",
+        }
+
+        return render(request, "dmt_filter.html", context)
+
+    except UploadedExcel.DoesNotExist:
+        messages.error(request, "File not found. Please re-upload.")
+        return redirect("upload_excel")
+
+    except Exception as e:
+        traceback.print_exc()
+        messages.error(request, f"Unexpected error: {e}")
+        return redirect("dmt_results_prompt", file_id=file_id)
+
+@login_required
+def check_filter_ready(request, file_id):
+    try:
+        file = UploadedExcel.objects.get(id=file_id, uploaded_by=request.user)
+        return JsonResponse({"ready": file.status == "Filtered"})
+    except UploadedExcel.DoesNotExist:
+        return JsonResponse({"ready": False})
 
 @require_GET
+@login_required
 def get_progress_status(request, file_id):
     progress = cache.get(f"progress_{file_id}", 0)
+    print(f"📡 Progress requested for file_id={file_id}: {progress}")
     return JsonResponse({"progress": progress})
 
 @login_required
@@ -471,73 +487,89 @@ def run_dmt_filtration_view(request, file_id):
         messages.error(request, "The Excel file could not be found on the server. Please re-upload it.")
         return redirect("upload_excel")
 
-    version_choice = request.GET.get('version_choice') or request.session.get('version_choice', 'all')
+    version_choice = request.POST.get('version_choice') or request.session.get('version_choice', 'all')
     print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
+    sys.stdout.flush()
 
     config_root = os.path.join(settings.MEDIA_ROOT, "uploads", str(request.user.id), uploaded_file.folder_name)
 
-    def run_background():
+    def progress_callback(p):
+        cache.set(f"progress_{file_id}", p)
+
+    def background_filtration():
+        print("🚀 Background filtration started")
         try:
             cache.set(f"progress_{file_id}", 0)
-            result_path = process_hrl_files(input_excel_path, config_root, version_choice)
+            print(f"🔧 Background thread: Filtration started for file_id={file_id}")
+            sys.stdout.flush()
+
+            start_time = time.time()
+
+            # ✅ SAFELY wrap process_hrl_files
+            try:
+                result_path = process_hrl_files(input_excel_path, config_root, version_choice, progress_callback)
+                print(f"📂 result_path returned from process_hrl_files: {result_path}")
+            except Exception as e:
+                print("❌ Exception inside process_hrl_files:", str(e))
+                traceback.print_exc()
+                cache.set(f"progress_{file_id}", -1)
+                return
+
+            sys.stdout.flush()
+
+            if not result_path or not os.path.exists(result_path):
+                print(f"❌ File does not exist at: {result_path}")
+                cache.set(f"progress_{file_id}", -1)
+                return
+
+            end_time = time.time()
+            elapsed_str = time.strftime("%H:%M:%S", time.gmtime(round(end_time - start_time)))
 
             folder_name = uploaded_file.folder_name.strip()
             user_upload_dir = os.path.join('uploads', str(request.user.id), folder_name)
-            full_user_upload_dir = os.path.join(settings.MEDIA_ROOT, user_upload_dir)
-            os.makedirs(full_user_upload_dir, exist_ok=True)
-
-            filtered_filename = os.path.basename(result_path)
-            relative_path = os.path.join(user_upload_dir, filtered_filename)
+            relative_path = os.path.join(user_upload_dir, os.path.basename(result_path))
 
             with open(result_path, 'rb') as f:
                 saved_path = default_storage.save(relative_path, File(f))
+                print("📤 Excel saved to storage:", saved_path)
 
-            uploaded_file.file_name = filtered_filename
-            uploaded_file.excel_file = saved_path
+            file_obj = UploadedExcel.objects.get(pk=file_id)
+            print("📊 Opening Excel to calculate metrics")
             xls = pd.ExcelFile(result_path)
-            tables_html = {}
-            total_count = approved_count = pending_count = 0
-            approved_percent = pending_percent = 0
-            for sheet_name in xls.sheet_names:
-                df = xls.parse(sheet_name)
-                tables_html[sheet_name] = df.to_html(classes="table table-bordered table-sm", index=False)
-                if 'HRL Available?' in df.columns:
-                    hrl_series = df['HRL Available?'].astype(str).str.strip().str.lower()
-                    total_count += len(df)
-                    approved_count += (hrl_series == 'hrl found').sum()
-                    pending_count += (hrl_series != 'hrl found').sum()
-                    
-            approved_percent = round((approved_count / total_count) * 100, 2) if total_count else 0
-            pending_percent = round((pending_count / total_count) * 100, 2) if total_count else 0
-            
-            uploaded_file.total_count = total_count
-            uploaded_file.approved_count = approved_count
-            uploaded_file.pending_count = pending_count
-            uploaded_file.status = 'Filtered'
-            uploaded_file.save()
-            # ✅ Store approved_percent in cache for reuse
-            cache.set(f"approved_percent_{file_id}", approved_percent)
 
-            cache.set(f"result_context_{file_id}", {
-                "tables_html": tables_html,
-                "download_ready": True,
-                "download_url": uploaded_file.excel_file.url,
-                "filtered_filename": uploaded_file.file_name,
-                "total_count": total_count,
-                "approved_count": approved_count,
-                "pending_count": pending_count,
-                "approved_percent": approved_percent,
-                "pending_percent": pending_percent,
-            }, timeout=None)
+            total, approved, pending = 0, 0, 0
+            for sheet in xls.sheet_names:
+                df = xls.parse(sheet)
+                if 'HRL Available?' in df.columns:
+                    series = df['HRL Available?'].astype(str).str.strip().str.lower()
+                    total += len(df)
+                    approved += (series == "hrl found").sum()
+                    pending += (series != "hrl found").sum()
+
+            file_obj.excel_file = saved_path
+            file_obj.file_name = os.path.basename(result_path)
+            file_obj.status = "Filtered"
+            file_obj.timestamp = timezone.now()
+            file_obj.total_count = total
+            file_obj.approved_count = approved
+            file_obj.pending_count = pending
+            file_obj.filtration_time = elapsed_str
+            file_obj.save()
+
+            print(f"✅ Final DB status after save: {UploadedExcel.objects.get(pk=file_id).status}")
+            sys.stdout.flush()
+
             cache.set(f"progress_{file_id}", 100)
 
         except Exception as e:
-            print("Error in background thread:", e)
-            cache.set(f"progress_{file_id}", 100)
+            print("❌ Error in background thread:", str(e))
+            traceback.print_exc()
+            sys.stdout.flush()
+            cache.set(f"progress_{file_id}", -1)
 
-    threading.Thread(target=run_background).start()
+    threading.Thread(target=background_filtration).start()
+
     return redirect("dmt_results_prompt", file_id=file_id)
-
 
 @login_required
 def dmt_results_prompt_view(request, file_id):

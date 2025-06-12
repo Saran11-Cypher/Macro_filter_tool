@@ -120,142 +120,150 @@ def find_column_name(headers, target_name):
             return h
     raise ValueError(f"Column '{target_name}' not found")
 
+print("🔧 process_hrl_files loaded from utils.py ✅")
+def process_hrl_files(excel_path, upload_folder, version_choice, progress_callback=None):
+    import traceback
+    import time
+    import threading
+    from openpyxl import load_workbook
+    import pandas as pd
+    from .utils import normalize_text, categorize_files, find_matching_file
+    import os
+    from openpyxl.styles import PatternFill
 
-def process_hrl_files(excel_path, upload_folder, version_choice):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
-    os.makedirs(HRL_PARENT_FOLDER, exist_ok=True)
+    def smooth_progress(start=0, end=100, duration=30):
+        steps = end - start
+        interval = duration / steps if steps else 0.3
+        def run():
+            for i in range(start, end + 1):
+                if progress_callback:
+                    progress_callback(i)
+                time.sleep(interval)
+        threading.Thread(target=run, daemon=True).start()
 
-    # print("File exists:", os.path.exists(excel_path))
-    # print("Path:", excel_path)
-    # print(f"🔧 Starting HRL filtration | Version selected: {version_choice}")
+    try:
+        print("🔍 ENTERED process_hrl_files")
 
-    # Load workbook and sheets
-    wb = load_workbook(excel_path)
-    ws_main = wb["Main"]
-    ws_bal = wb["Business Approved List"]
+        from django.conf import settings
+        from datetime import datetime
 
-    # Load and clean DataFrame
-    df_bal = pd.read_excel(
-        excel_path,
-        sheet_name="Business Approved List",
-        dtype=str,
-        keep_default_na=False,  # Keep blanks as empty strings
-        na_filter=False         # Prevent pandas from auto-filling NaNs
-    )
-    df_bal.columns = df_bal.columns.str.strip()
+        # Start smooth progress bar
+        smooth_progress(0, 100, duration=30)
 
-    # print("📄 Raw df_bal.head():\n", df_bal.head())
-    # print("🧾 df_bal.columns (raw):", df_bal.columns.tolist())
-    # print("🔍 Available columns in Excel file:")
-    # for col in df_bal.columns:
-    #     print(f"→ '{col}'")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
+        os.makedirs(HRL_PARENT_FOLDER, exist_ok=True)
 
-    # 🔁 Dynamically map important columns (case-insensitive)
-    col_map = {col.strip().lower(): col for col in df_bal.columns}
-    required_keys = {
-        "hrl available?": None,
-        "file name is correct in export sheet": None
-    }
+        print("📘 Loading Excel file:", excel_path)
+        wb = load_workbook(excel_path)
+        print("✅ Workbook loaded")
 
-    for key in required_keys:
-        actual_col = col_map.get(key.lower())
-        if not actual_col:
-            raise Exception(f"Missing required column in Excel sheet: {key}")
-        required_keys[key] = actual_col
+        ws_main = wb["Main"]
+        ws_bal = wb["Business Approved List"]
 
-    hrl_col = required_keys["hrl available?"]
-    file_name_col = required_keys["file name is correct in export sheet"]
+        df_bal = pd.read_excel(
+            excel_path,
+            sheet_name="Business Approved List",
+            dtype=str,
+            keep_default_na=False,
+            na_filter=False
+        )
+        df_bal.columns = df_bal.columns.str.strip()
 
-    # Normalize config type
-    df_bal["Config Type"] = df_bal["Config Type"].astype(str).apply(normalize_text)
-    approved_config_types = set(df_bal["Config Type"].dropna().unique())
+        print("📄 df_bal shape:", df_bal.shape)
+        print("🧾 df_bal columns:", df_bal.columns.tolist())
 
-    config_root_path = os.path.join(settings.MEDIA_ROOT, "configs")
-    available_folders = {
-        normalize_text(f): os.path.join(config_root_path, f)
-        for f in os.listdir(config_root_path)
-        if os.path.isdir(os.path.join(config_root_path, f))
-    }
-    selected_folders = {
-        k: v for k, v in available_folders.items() if k in approved_config_types
-    }
+        col_map = {col.strip().lower(): col for col in df_bal.columns}
+        required_keys = {
+            "hrl available?": None,
+            "file name is correct in export sheet": None
+        }
 
-    print(f"📁 Selected folders: {selected_folders}")
+        for key in required_keys:
+            actual_col = col_map.get(key.lower())
+            if not actual_col:
+                raise Exception(f"Missing required column in Excel sheet: {key}")
+            required_keys[key] = actual_col
 
-    # Clear old data in Main sheet (keep header)
-    ws_main.delete_rows(2, ws_main.max_row)
+        print("🔑 Mapped required columns:", required_keys)
 
-    for config_type, folder_path in selected_folders.items():
-        uploaded_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-        ws_main.append([config_type, len(uploaded_files), "Pending", "Pending"])
+        hrl_col = required_keys["hrl available?"]
+        file_name_col = required_keys["file name is correct in export sheet"]
 
-    # Begin matching
-    for config_type, folder_path in selected_folders.items():
-        single_version_files, multi_version_files = categorize_files(folder_path)
-        config_type_rows = df_bal[df_bal["Config Type"] == config_type]
+        df_bal["Config Type"] = df_bal["Config Type"].astype(str).apply(normalize_text)
+        approved_config_types = set(df_bal["Config Type"].dropna().unique())
 
-        for index, row in config_type_rows.iterrows():
-            config_name = row["Config Name"]
-            if pd.isna(config_name) or not str(config_name).strip():
-                continue
+        config_root_path = os.path.join(settings.MEDIA_ROOT, "configs")
+        available_folders = {
+            normalize_text(f): os.path.join(config_root_path, f)
+            for f in os.listdir(config_root_path)
+            if os.path.isdir(os.path.join(config_root_path, f))
+        }
+        selected_folders = {
+            k: v for k, v in available_folders.items() if k in approved_config_types
+        }
 
-            matches = find_matching_file(config_name, single_version_files, multi_version_files, version_choice)
-            matches = list({os.path.basename(m): m for m in matches}.values())  # Deduplicate
+        print("📁 Selected folders:", selected_folders)
+        print("🔁 Starting config type loop:", list(selected_folders.keys()))
 
-            if matches:
-                df_bal.at[index, hrl_col] = "HRL Found"
-                for match in matches:
-                    src = os.path.join(folder_path, match)
-                    tgt_folder = os.path.join(HRL_PARENT_FOLDER, config_type)
-                    os.makedirs(tgt_folder, exist_ok=True)
-                    tgt = os.path.join(tgt_folder, match)
-                    shutil.copy2(src, tgt)
+        ws_main.delete_rows(2, ws_main.max_row)
+        for config_type, folder_path in selected_folders.items():
+            uploaded_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+            ws_main.append([config_type, len(uploaded_files), "Pending", "Pending"])
 
-                    existing_val = str(df_bal.at[index, file_name_col]) if pd.notna(df_bal.at[index, file_name_col]) else ""
-                    new_val = os.path.relpath(src, upload_folder)
-                    df_bal.at[index, file_name_col] = (existing_val + f", {new_val}").strip(", ")
-            else:
-                df_bal.at[index, hrl_col] = "Not Found"
+        for config_type, folder_path in selected_folders.items():
+            print(f"🔧 Processing config_type: {config_type}")
+            single_version_files, multi_version_files = categorize_files(folder_path)
+            config_type_rows = df_bal[df_bal["Config Type"] == config_type]
 
-    # Write back to workbook
-    ws_bal.delete_rows(2, ws_bal.max_row)
-    for col_idx, col_name in enumerate(df_bal.columns, start=1):
-        ws_bal.cell(row=1, column=col_idx, value=col_name)
+            for index, row in config_type_rows.iterrows():
+                config_name = row.get("Config Name")
+                if pd.isna(config_name) or not str(config_name).strip():
+                    continue
 
-    for r_idx, row in df_bal.iterrows():
-        for c_idx, val in enumerate(row):
-            ws_bal.cell(row=r_idx + 2, column=c_idx + 1, value=str(val))
+                print(f"🔍 Row {index} - config name: {config_name}")
+                matches = find_matching_file(config_name, single_version_files, multi_version_files, version_choice)
+                matches = list({os.path.basename(m): m for m in matches}.values())
 
-    # Color highlighting
-    red = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
-    green = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
-    blue = PatternFill(start_color='BDD7EE', end_color='BDD7EE', fill_type='solid')
+                try:
+                    if matches:
+                        df_bal.at[index, hrl_col] = "HRL Found"
+                        for match in matches:
+                            src = os.path.join(folder_path, match)
+                            tgt_folder = os.path.join(HRL_PARENT_FOLDER, config_type)
+                            os.makedirs(tgt_folder, exist_ok=True)
+                            tgt = os.path.join(tgt_folder, match)
+                            shutil.copy2(src, tgt)
 
-    header = [h.strip().lower() for h in df_bal.columns]
-    config_type_col = header.index("config type") + 1
-    config_name_col = header.index("config name") + 1
+                            existing_val = str(df_bal.at[index, file_name_col]) if pd.notna(df_bal.at[index, file_name_col]) else ""
+                            new_val = os.path.relpath(src, upload_folder)
+                            df_bal.at[index, file_name_col] = (existing_val + f", {new_val}").strip(", ")
+                    else:
+                        df_bal.at[index, hrl_col] = "Not Found"
+                except Exception as e:
+                    print(f"❌ Failed HRL update at row {index}: {e}")
+                    traceback.print_exc()
 
-    for row in range(2, ws_bal.max_row + 1):
-        raw_cfg_type = ws_bal.cell(row=row, column=config_type_col).value
-        raw_cfg_name = ws_bal.cell(row=row, column=config_name_col).value
-        cfg_type = normalize_text(raw_cfg_type) if raw_cfg_type else ""
-        cfg_name = normalize_text(raw_cfg_name) if raw_cfg_name else ""
+        ws_bal.delete_rows(2, ws_bal.max_row)
+        for col_idx, col_name in enumerate(df_bal.columns, start=1):
+            ws_bal.cell(row=1, column=col_idx, value=col_name)
 
-        if cfg_type in selected_folders:
-            single, multi = categorize_files(selected_folders[cfg_type])
-            versions = len(multi.get(cfg_name, [])) + len(single.get(cfg_name, []))
-            cell = ws_bal.cell(row=row, column=config_name_col)
+        for r_idx, row in df_bal.iterrows():
+            for c_idx, val in enumerate(row):
+                ws_bal.cell(row=r_idx + 2, column=c_idx + 1, value=str(val))
 
-            if versions == 1:
-                cell.fill = red
-            elif versions == 2:
-                cell.fill = green
-            elif versions > 2:
-                cell.fill = blue
+        filtered_excel_path = os.path.join(HRL_PARENT_FOLDER, os.path.basename(excel_path))
+        wb.save(filtered_excel_path)
+        wb.close()
 
-    filtered_excel_path = os.path.join(HRL_PARENT_FOLDER, os.path.basename(excel_path))
-    wb.save(filtered_excel_path)
-    wb.close()
+        print("✅ Returning filtered Excel path:", filtered_excel_path)
+        return filtered_excel_path
 
-    return filtered_excel_path
+    except Exception as e:
+        print("❌ Exception in process_hrl_files root:", str(e))
+        traceback.print_exc()
+        if progress_callback:
+            progress_callback(-1)
+        raise
+
+

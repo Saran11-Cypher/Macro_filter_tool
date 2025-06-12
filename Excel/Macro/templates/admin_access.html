@@ -314,6 +314,32 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+    .admin-btn.dashboard {
+        display: block;  /* full width */
+        width: 100%;
+        text-align: center;
+        padding: 14px 30px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        background: linear-gradient(135deg, #ff5f6d, #ffc371);
+        border: none;
+        border-radius: 14px;
+        text-decoration: none;
+        box-shadow: 0 8px 20px rgba(255, 95, 109, 0.3);
+        transition: all 0.3s ease;
+        margin-top: 12px;
+        margin-bottom: 12px;
+    }
+
+    .admin-btn.dashboard:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(255, 95, 109, 0.5);
+        color: white;
+    }
+
+
     </style>
 </head>
 <body>
@@ -372,10 +398,16 @@
                 <span id="adminLinkText">Access Admin Dashboard</span>
                 </a>
 
-                <a href="{% url 'logout' %}" class="admin-btn secondary" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Secure Logout</span>
-                </a>
+            <a href="{% url 'dashboard' %}" class="admin-btn dashboard" id="dashboardBtn">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Go to Dashboard</span>
+            </a>
+
+            <a href="{% url 'logout' %}" class="admin-btn secondary" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Secure Logout</span>
+            </a>
+
             </div>
         </div>
     </div>

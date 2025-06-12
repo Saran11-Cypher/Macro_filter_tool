@@ -15,6 +15,11 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+        <!-- Bootstrap JS Bundle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <!-- AOS Animation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
     <style>
     :root {
       --primary-violet: #4a1a5c;
@@ -558,25 +563,33 @@
                 <i class="fas fa-arrow-left me-1"></i> Go to Uploads
               </a>
             </div>
-          </form>
-          <!-- 🌈 Gradient Progress Bar Floating Centered -->
-          <div id="floatingProgressContainer" class="w-100 d-none mt-3">
-            <div class="text-center text-light fw-semibold mb-2" style="font-size: 1.1rem;">
-              LOADING...
-            </div>
-            <div class="progress stylish-progress">
-              <div id="progressBar" class="progress-bar" role="progressbar">0%</div>
-            </div>
+            </form>
+            <!-- 🌈 Stylish Floating Centered Progress Bar -->
+            <div id="floatingProgressContainer" class="d-none mt-5">
+              <div class="text-center text-light fw-semibold mb-2" style="font-size: 1.2rem;">
+                ⏳ Filtering in progress...
+              </div>
+              <div class="progress mx-auto" style="height: 30px; max-width: 500px;">
+                <div
+                  id="progressBar"
+                  class="progress-bar progress-bar-striped progress-bar-animated text-dark fw-bold"
+                  role="progressbar"
+                  style="
+                    width: 0%;
+                    background-image: linear-gradient(to right, #00c6ff, #0072ff);
+                    font-size: 1rem;
+                    transition: width 0.5s ease;
+                  ">
+                  0%
+                </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 </div>
-
-
-
 {% if approved_percent is not None %}
   <div class="alert alert-success mt-3 px-1 fw-bold">
     ✅ Approved HRL Percentage: {{ approved_percent }}%
@@ -614,55 +627,86 @@
   </div>
 </div>
 {% endif %}
-
-
-
-    <!-- Bootstrap JS Bundle -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <!-- AOS Animation Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
     
 <script>
 function handleSubmit(e) {
   e.preventDefault();
+
   const form = document.getElementById("versionForm");
   const fileId = form.dataset.uploadId;
   const progressBar = document.getElementById("progressBar");
   const progressContainer = document.getElementById("floatingProgressContainer");
-  const filterUrl = `{% url 'dmt_filter' upload.id %}`;
+  const filterUrl = `/dmt/filter/${fileId}/`;
+  let progressReached100 = false;
+  let backendConfirmed = false;
 
   progressContainer.classList.remove("d-none");
 
+  // Submit form
   fetch(form.action, {
     method: "POST",
     body: new FormData(form),
     headers: {
       "X-CSRFToken": form.querySelector('[name=csrfmiddlewaretoken]').value
     },
+  }).then(() => {
+    console.log("✅ Form submitted. Starting polling...");
+    startProgressPolling();
+    startReadinessPolling();
   });
 
-  const interval = setInterval(() => {
-    fetch(`/progress/${fileId}/`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.progress !== undefined) {
-          const p = Math.max(0, Math.min(100, data.progress));
-          progressBar.style.width = p + "%";
-          progressBar.textContent = p + "%";
+  function startProgressPolling() {
+    const interval = setInterval(() => {
+      fetch(`/progress/${fileId}/`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.progress !== undefined) {
+            const p = Math.max(0, Math.min(100, data.progress));
+            progressBar.style.width = p + "%";
+            progressBar.textContent = p + "%";
 
-          if (p === 100) {
-            clearInterval(interval);
-            progressBar.style.backgroundImage = "linear-gradient(to right, #38ef7d, #11998e)";
-            setTimeout(() => {
-              window.location.href = filterUrl;
-            }, 1000);
+            if (p === 100) {
+              progressReached100 = true;
+              clearInterval(interval);
+              checkRedirect();
+            }
           }
-        }
-      });
-  }, 1000);
+        })
+        .catch(err => {
+          console.error("❌ Error polling progress:", err);
+          clearInterval(interval);
+        });
+    }, 1000);
+  }
+
+  function startReadinessPolling() {
+    const interval = setInterval(() => {
+      fetch(`/check-filter-ready/${fileId}/`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.ready === true) {
+            backendConfirmed = true;
+            clearInterval(interval);
+            checkRedirect();
+          }
+        })
+        .catch(err => {
+          console.error("❌ Error polling readiness:", err);
+        });
+    }, 1500);
+  }
+
+  function checkRedirect() {
+    if (progressReached100 && backendConfirmed) {
+      console.log("✅ Progress and backend ready. Redirecting...");
+      setTimeout(() => {
+        window.location.href = filterUrl;
+      }, 800); // small visual delay
+    }
+  }
 }
 
-
+// ✅ DOM setup
 document.addEventListener('DOMContentLoaded', function () {
   AOS.init();
 
@@ -676,7 +720,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  // Fancy hover effects
   document.querySelectorAll('.form-select, .btn').forEach(element => {
     element.addEventListener('mouseover', () => {
       element.style.transition = 'all 0.3s';
@@ -687,15 +730,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-
-  // Table animations
   const tableResponsive = document.querySelector('.table-responsive');
   if (tableResponsive) {
     setTimeout(() => tableResponsive.classList.add('pulse-glow'), 1000);
     setTimeout(() => tableResponsive.classList.remove('pulse-glow'), 7000);
   }
-});
-document.addEventListener("DOMContentLoaded", function () {
+
   const buttons = document.querySelectorAll(".sheet-tab-btn");
   const panels = document.querySelectorAll(".sheet-panel");
 
@@ -704,17 +744,14 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault();
       e.stopPropagation();
 
-      // Hide all panels
       panels.forEach(panel => panel.style.display = "none");
 
-      // Show the selected panel
       const targetPanel = document.getElementById("sheet-panel-" + btn.dataset.sheet);
       if (targetPanel) {
         targetPanel.style.display = "block";
-        targetPanel.scrollIntoView({ behavior: "instant", block: "nearest" }); // ⛔ prevent jump
+        targetPanel.scrollIntoView({ behavior: "instant", block: "nearest" });
       }
 
-      // Update button classes
       buttons.forEach(b => {
         b.classList.remove("btn-primary");
         b.classList.add("btn-outline-primary");

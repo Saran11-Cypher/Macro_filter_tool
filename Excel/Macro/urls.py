@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import user_login, user_logout, dashboard, user_signup, forgot_password, verify_otp, reset_password,make_admin, delete_user,upload_excel,download_file,delete_file,run_dmt_filtration_view,download_filtered_file,dmt_results_prompt_view,admin_access_view,html_merge_view,dmt_filter_view,get_progress_status
+from .views import user_login, user_logout, dashboard, user_signup, forgot_password, verify_otp, reset_password,make_admin, delete_user,upload_excel,download_file,delete_file,run_dmt_filtration_view,download_filtered_file,dmt_results_prompt_view,admin_access_view,html_merge_view,dmt_filter_view,get_progress_status,check_filter_ready
 from django.conf import settings
 from django.conf.urls.static import static
 from django.shortcuts import render
@@ -22,4 +22,5 @@ urlpatterns = [
     path("merge-html/", html_merge_view, name="merge_html"),
     path("dmt/filter/<int:file_id>/", dmt_filter_view, name="dmt_filter"),
     path('progress/<int:file_id>/', get_progress_status, name='get_progress'),
+    path("check-filter-ready/<int:file_id>/",check_filter_ready, name="check_filter_ready"),
     ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

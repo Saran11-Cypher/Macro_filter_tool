@@ -42,6 +42,8 @@ class UploadedExcel(models.Model):
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.CharField(max_length=50, default='Processed')
     stored_excel = models.ForeignKey(StoredExcel, on_delete=models.CASCADE, null=True, blank=True)
+    filtration_time = models.CharField(max_length=20, null=True, blank=True)  # Add this
+
 
     # 🆕 Add these three fields
     total_count = models.IntegerField(default=0)

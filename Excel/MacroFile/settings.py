@@ -146,3 +146,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 ENFORCE_STRICT_FOLDER_MATCH = True
 
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
+
+
