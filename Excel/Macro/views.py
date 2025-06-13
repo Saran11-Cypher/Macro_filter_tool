@@ -9,7 +9,7 @@ import os, random,json, xlrd, math
 from .utils import process_hrl_files
 from django.core.files import File
 from io import BytesIO
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 import pandas as pd
 import os, re, traceback, ntpath, threading, time,sys
 from django.views.decorators.csrf import csrf_exempt
@@ -453,7 +453,7 @@ def dmt_filter_view(request, file_id):
         traceback.print_exc()
         messages.error(request, f"Unexpected error: {e}")
         return redirect("dmt_results_prompt", file_id=file_id)
-
+    
 @login_required
 def check_filter_ready(request, file_id):
     try:
@@ -468,6 +468,13 @@ def get_progress_status(request, file_id):
     progress = cache.get(f"progress_{file_id}", 0)
     print(f"📡 Progress requested for file_id={file_id}: {progress}")
     return JsonResponse({"progress": progress})
+
+@require_POST
+@login_required
+def cancel_filtration(request, file_id):
+    cache.set(f"cancel_filtration_{file_id}", True)
+    print(f"🛑 Cancel requested for file_id {file_id}")
+    return JsonResponse({"cancelled": True})
 
 @login_required
 def run_dmt_filtration_view(request, file_id):
@@ -505,9 +512,8 @@ def run_dmt_filtration_view(request, file_id):
 
             start_time = time.time()
 
-            # ✅ SAFELY wrap process_hrl_files
             try:
-                result_path = process_hrl_files(input_excel_path, config_root, version_choice, progress_callback)
+                result_path = process_hrl_files(input_excel_path, config_root, version_choice, file_id, progress_callback)
                 print(f"📂 result_path returned from process_hrl_files: {result_path}")
             except Exception as e:
                 print("❌ Exception inside process_hrl_files:", str(e))
@@ -566,6 +572,9 @@ def run_dmt_filtration_view(request, file_id):
             traceback.print_exc()
             sys.stdout.flush()
             cache.set(f"progress_{file_id}", -1)
+
+    # 🧹 Clear any old cancel flag before restarting filtration
+    cache.delete(f"cancel_filtration_{file_id}")
 
     threading.Thread(target=background_filtration).start()
 
@@ -715,8 +724,3 @@ def html_merge_view(request):
         "final_output_folder": final_output_folder,
         "num_files": num_files
     })
-
-
-
-
-

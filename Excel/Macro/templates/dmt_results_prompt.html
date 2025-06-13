@@ -552,17 +552,17 @@
               <div class="alert alert-warning mt-2">{{ message }}</div>
               {% endfor %}
             </div>
-            <div class="d-flex justify-content-start gap-2">
-              <button type="submit" class="btn btn-primary pulse">
-                <i class="fas fa-play btn-icon"></i> Run Filter
-              </button>
-              <a href="#" class="btn btn-secondary">
-                <i class="fas fa-times btn-icon"></i> Cancel
-              </a>
-              <a href="{% url 'upload_excel' %}" class="btn fancy-btn ms-auto">
-                <i class="fas fa-arrow-left me-1"></i> Go to Uploads
-              </a>
-            </div>
+                          <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary w-100 flex-grow-1">
+                  <i class="fas fa-play me-2"></i> Run Filter
+                </button>
+                <a href="#" class="btn btn-outline-danger w-100 flex-grow-1" onclick="cancelFiltration(event)">
+                <i class="fas fa-times me-2"></i> Cancel
+                </a>
+                <a href="{% url 'upload_excel' %}" class="btn btn-outline-primary w-100 flex-grow-1">
+                Go to Uploads
+                </a>
+              </div>
             </form>
             <!-- 🌈 Stylish Floating Centered Progress Bar -->
             <div id="floatingProgressContainer" class="d-none mt-5">
@@ -595,6 +595,12 @@
     ✅ Approved HRL Percentage: {{ approved_percent }}%
   </div>
 {% endif %}
+
+<!-- ✅ Cancel banner (initially hidden) -->
+<div id="cancelNotice" class="alert alert-danger d-none mt-3" role="alert">
+  ❌ Filtration process was cancelled.
+</div>
+
 <!-- 🟪 Full-Width Sheet Preview Section -->
 {% if table_htmls %}
 <div class="container-fluid px-4 mt-1">
@@ -661,11 +667,23 @@ function handleSubmit(e) {
         .then(res => res.json())
         .then(data => {
           if (data.progress !== undefined) {
-            const p = Math.max(0, Math.min(100, data.progress));
-            progressBar.style.width = p + "%";
-            progressBar.textContent = p + "%";
+            const p = parseInt(data.progress);
+            
+            if (p === -1) {
+              // 💥 Cancelled
+              progressBar.classList.remove("bg-info");
+              progressBar.classList.add("bg-danger");
+              progressBar.style.width = "100%";
+              progressBar.textContent = "Cancelled";
+              clearInterval(interval);  // 🔁 STOP polling
+              return;
+            }
 
-            if (p === 100) {
+            const bounded = Math.max(0, Math.min(100, p));
+            progressBar.style.width = bounded + "%";
+            progressBar.textContent = bounded + "%";
+
+            if (bounded === 100) {
               progressReached100 = true;
               clearInterval(interval);
               checkRedirect();
@@ -678,6 +696,7 @@ function handleSubmit(e) {
         });
     }, 1000);
   }
+
 
   function startReadinessPolling() {
     const interval = setInterval(() => {
@@ -762,6 +781,45 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 });
+function cancelFiltration(event) {
+  event.preventDefault();
+  const fileId = document.getElementById("versionForm").dataset.uploadId;
+
+  if (!confirm("Are you sure you want to cancel the filtration?")) {
+    console.log("❎ Cancel aborted by user.");
+    return;
+  }
+
+  fetch(`/cancel-filtration/${fileId}/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value,
+    }
+  }).then(response => {
+    if (response.ok) {
+      console.log("🛑 Filtration cancellation confirmed and triggered.");
+
+      // Optional UI feedback before reload
+      const bar = document.getElementById("progressBar");
+      if (bar) {
+        bar.classList.remove("bg-info");
+        bar.classList.add("bg-danger");
+        bar.style.width = "100%";
+        bar.textContent = "Cancelled";
+      }
+
+      // Optional cancel alert
+      const notice = document.getElementById("cancelNotice");
+      if (notice) notice.classList.remove("d-none");
+
+      // ✅ Reload the page to reset everything
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  });
+}
+
 </script>
 </body>
 </html>

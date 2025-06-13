@@ -1,12 +1,13 @@
-import os, re, traceback, shutil
+import os, re, traceback, shutil, time
 import pandas as pd
 from collections import defaultdict
 from datetime import datetime
 from openpyxl import load_workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill
 from django.conf import settings
 import os, re, traceback, shutil
-
+from django.core.cache import cache
 def is_file_locked(filepath):
     if not os.path.exists(filepath):
         return False
@@ -89,64 +90,26 @@ def find_matching_file(config_name, single_version_files, multi_version_files, s
     print("❌ No match found.")
     return []
 
+def safe_copy(src, tgt, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            if not os.path.exists(tgt):
+                try:
+                    os.link(src, tgt)
+                except Exception:
+                    shutil.copy2(src, tgt)
+            return
+        except PermissionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(0.5)
+            else:
+                raise e
 
-def safe_create_folder(path):
+def process_hrl_files(excel_path, upload_folder, version_choice, file_id, progress_callback=None):
     try:
-        # print(f"Checking if file: {os.path.isfile(path)}")
-        # print(f"Checking if dir : {os.path.isdir(path)}")
-        # print(f"Can write to parent: {os.access(os.path.dirname(path), os.W_OK)}")
-        
-        if os.path.exists(path):
-            if os.path.isfile(path):
-                raise PermissionError(f"Expected directory but found file: {path}")
-            # print(f"Folder already exists: {path}")
-        else:
-            os.makedirs(path, exist_ok=True)
-            # print(f"Folder created successfully: {path}")
-    except PermissionError as e:
-        print(f"Permission denied error when creating folder: {path}")
-        print(traceback.format_exc())
-        raise
-    except Exception as e:
-        print(f"Unexpected error when creating folder: {path}")
-        print(traceback.format_exc())
-        raise
-
-
-def find_column_name(headers, target_name):
-    target_norm = target_name.strip().lower()
-    for h in headers:
-        if h and h.strip().lower() == target_norm:
-            return h
-    raise ValueError(f"Column '{target_name}' not found")
-
-print("🔧 process_hrl_files loaded from utils.py ✅")
-def process_hrl_files(excel_path, upload_folder, version_choice, progress_callback=None):
-    import traceback
-    import time
-    from openpyxl import load_workbook
-    import pandas as pd
-    from .utils import normalize_text, categorize_files, find_matching_file
-    import os
-    import shutil
-    from openpyxl.styles import PatternFill
-
-    try:
-        print("🔍 ENTERED process_hrl_files")
-
-        from django.conf import settings
-        from datetime import datetime
-
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         HRL_PARENT_FOLDER = os.path.join(settings.MEDIA_ROOT, f"HRLS_{timestamp}")
         os.makedirs(HRL_PARENT_FOLDER, exist_ok=True)
-
-        print("📘 Loading Excel file:", excel_path)
-        wb = load_workbook(excel_path)
-        print("✅ Workbook loaded")
-
-        ws_main = wb["Main"]
-        ws_bal = wb["Business Approved List"]
 
         df_bal = pd.read_excel(
             excel_path,
@@ -157,22 +120,13 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
         )
         df_bal.columns = df_bal.columns.str.strip()
 
-        print("📄 df_bal shape:", df_bal.shape)
-        print("🧾 df_bal columns:", df_bal.columns.tolist())
-
         col_map = {col.strip().lower(): col for col in df_bal.columns}
         required_keys = {
-            "hrl available?": None,
-            "file name is correct in export sheet": None
+            "hrl available?": col_map.get("hrl available?"),
+            "file name is correct in export sheet": col_map.get("file name is correct in export sheet")
         }
-
-        for key in required_keys:
-            actual_col = col_map.get(key.lower())
-            if not actual_col:
-                raise Exception(f"Missing required column in Excel sheet: {key}")
-            required_keys[key] = actual_col
-
-        print("🔑 Mapped required columns:", required_keys)
+        if None in required_keys.values():
+            raise Exception("Missing required column(s) in Excel sheet")
 
         hrl_col = required_keys["hrl available?"]
         file_name_col = required_keys["file name is correct in export sheet"]
@@ -186,74 +140,122 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
             for f in os.listdir(config_root_path)
             if os.path.isdir(os.path.join(config_root_path, f))
         }
-        selected_folders = {
-            k: v for k, v in available_folders.items() if k in approved_config_types
+        selected_folders = {k: v for k, v in available_folders.items() if k in approved_config_types}
+
+        categorized_map = {
+            config_type: categorize_files(folder_path)
+            for config_type, folder_path in selected_folders.items()
         }
-
-        print("📁 Selected folders:", selected_folders)
-        print("🔁 Starting config type loop:", list(selected_folders.keys()))
-
-        ws_main.delete_rows(2, ws_main.max_row)
-        for config_type, folder_path in selected_folders.items():
-            uploaded_files = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-            ws_main.append([config_type, len(uploaded_files), "Pending", "Pending"])
 
         total_rows = sum(len(df_bal[df_bal["Config Type"] == config_type]) for config_type in selected_folders)
         processed_rows = 0
 
         for config_type, folder_path in selected_folders.items():
-            print(f"🔧 Processing config_type: {config_type}")
-            single_version_files, multi_version_files = categorize_files(folder_path)
+            if cache.get(f"cancel_filtration_{file_id}"):
+                print("❌ Filtration cancelled before processing config_type:", config_type)
+                if progress_callback:
+                    progress_callback(-1)
+                return
+
+            single_version_files, multi_version_files = categorized_map[config_type]
             config_type_rows = df_bal[df_bal["Config Type"] == config_type]
 
             for index, row in config_type_rows.iterrows():
+                if cache.get(f"cancel_filtration_{file_id}"):
+                    print(f"❌ Cancelled during row index {index} of config_type {config_type}")
+                    if progress_callback:
+                        progress_callback(-1)
+                    return
+
                 config_name = row.get("Config Name")
                 if pd.isna(config_name) or not str(config_name).strip():
                     continue
 
-                print(f"🔍 Row {index} - config name: {config_name}")
                 matches = find_matching_file(config_name, single_version_files, multi_version_files, version_choice)
                 matches = list({os.path.basename(m): m for m in matches}.values())
 
-                try:
-                    if matches:
-                        df_bal.at[index, hrl_col] = "HRL Found"
-                        for match in matches:
-                            src = os.path.join(folder_path, match)
-                            tgt_folder = os.path.join(HRL_PARENT_FOLDER, config_type)
-                            os.makedirs(tgt_folder, exist_ok=True)
-                            tgt = os.path.join(tgt_folder, match)
-                            shutil.copy2(src, tgt)
+                if matches:
+                    df_bal.at[index, hrl_col] = "HRL Found"
+                    for match in matches:
+                        src = os.path.join(folder_path, match)
+                        tgt_folder = os.path.join(HRL_PARENT_FOLDER, config_type)
+                        os.makedirs(tgt_folder, exist_ok=True)
+                        tgt = os.path.join(tgt_folder, match)
+                        safe_copy(src, tgt)
 
-                            existing_val = str(df_bal.at[index, file_name_col]) if pd.notna(df_bal.at[index, file_name_col]) else ""
-                            new_val = os.path.relpath(src, upload_folder)
-                            df_bal.at[index, file_name_col] = (existing_val + f", {new_val}").strip(", ")
-                    else:
-                        df_bal.at[index, hrl_col] = "Not Found"
-                except Exception as e:
-                    print(f"❌ Failed HRL update at row {index}: {e}")
-                    traceback.print_exc()
+                        existing_val = str(df_bal.at[index, file_name_col]) if pd.notna(df_bal.at[index, file_name_col]) else ""
+                        new_val = os.path.relpath(src, upload_folder)
+                        df_bal.at[index, file_name_col] = (existing_val + f", {new_val}").strip(", ")
+                else:
+                    df_bal.at[index, hrl_col] = "Not Found"
 
                 processed_rows += 1
                 if progress_callback:
-                    progress_callback(int((processed_rows / total_rows) * 95))  # Leave last 5% for final save
+                    progress_callback(int((processed_rows / total_rows) * 95))
 
-        ws_bal.delete_rows(2, ws_bal.max_row)
-        for col_idx, col_name in enumerate(df_bal.columns, start=1):
-            ws_bal.cell(row=1, column=col_idx, value=col_name)
-
-        for r_idx, row in df_bal.iterrows():
-            for c_idx, val in enumerate(row):
-                ws_bal.cell(row=r_idx + 2, column=c_idx + 1, value=str(val))
-
+        # Save filtered Excel with sheet name
         filtered_excel_path = os.path.join(HRL_PARENT_FOLDER, os.path.basename(excel_path))
+        df_bal.to_excel(filtered_excel_path, index=False, sheet_name="Business Approved List")
+
+        # Load workbook and create Main sheet at index 0
+        wb = load_workbook(filtered_excel_path)
+        ws_main = wb.create_sheet(title="Main", index=0)
+        ws_main.append(["Config Type", "Files Found", "Exported", "Imported"])
+        for config_type, folder_path in selected_folders.items():
+            uploaded_files = [
+                f for f in os.listdir(folder_path)
+                if os.path.isfile(os.path.join(folder_path, f))
+            ]
+            ws_main.append([config_type, len(uploaded_files), "Pending", "Pending"])
+
+        # Style the Business Approved List sheet
+        ws = wb["Business Approved List"]
+        header = [
+            str(cell.value).strip().lower()
+            for cell in ws[1]
+            if cell.value is not None
+        ]
+
+        config_type_col = header.index("config type") + 1
+        config_name_col = header.index("config name") + 1
+
+        red = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
+        green = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
+        blue = PatternFill(start_color='BDD7EE', end_color='BDD7EE', fill_type='solid')
+
+        for row in range(2, ws.max_row + 1):
+            cfg_type = normalize_text(ws.cell(row=row, column=config_type_col).value or "")
+            cfg_name = normalize_text(ws.cell(row=row, column=config_name_col).value or "")
+            if cfg_type in categorized_map:
+                single, multi = categorized_map[cfg_type]
+                version_count = len(single.get(cfg_name, [])) + len(multi.get(cfg_name, []))
+                cell = ws.cell(row=row, column=config_name_col)
+                if version_count == 1:
+                    cell.fill = red
+                elif version_count == 2:
+                    cell.fill = green
+                elif version_count > 2:
+                    cell.fill = blue
+
+        # Force correct sheet order: Main, Business Approved List
+        if "Main" in wb.sheetnames and "Business Approved List" in wb.sheetnames:
+            main_sheet = wb["Main"]
+            bal_sheet = wb["Business Approved List"]
+            wb._sheets.remove(main_sheet)
+            wb._sheets.remove(bal_sheet)
+            wb._sheets = [main_sheet, bal_sheet] + wb._sheets
+
         wb.save(filtered_excel_path)
-        wb.close()
+
+        if cache.get(f"cancel_filtration_{file_id}"):
+            print("❌ Cancelled before final save.")
+            if progress_callback:
+                progress_callback(-1)
+            return
 
         if progress_callback:
             progress_callback(100)
 
-        print("✅ Returning filtered Excel path:", filtered_excel_path)
         return filtered_excel_path
 
     except Exception as e:
@@ -262,5 +264,10 @@ def process_hrl_files(excel_path, upload_folder, version_choice, progress_callba
         if progress_callback:
             progress_callback(-1)
         raise
+
+
+
+
+
 
 
