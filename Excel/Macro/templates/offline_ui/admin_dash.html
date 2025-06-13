@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="text-center">Admin Dashboard</h2>
+
+        <table class="table table-bordered table-striped mt-4">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.username }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        {% if user.is_superuser %}
+                            <span class="badge bg-success">Admin</span>
+                        {% else %}
+                            <span class="badge bg-secondary">User</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not user.is_superuser %}
+                            <a href="{% url 'make_admin' user.id %}" class="btn btn-sm btn-primary">Make Admin</a>
+                            <a href="{% url 'delete_user' user.id %}" class="btn btn-sm btn-danger">Delete</a>
+                        {% else %}
+                            <span class="text-muted">Admin</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+    </div>
+</body>
+</html>

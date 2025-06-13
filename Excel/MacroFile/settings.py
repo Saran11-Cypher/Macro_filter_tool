@@ -53,10 +53,19 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'MacroFile.urls'
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+IS_OFFLINE = os.environ.get("OFFLINE_MODE") == "1"
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': 
+    [os.path.join(BASE_DIR, 'Macro', 'templates', 'offline_ui'),
+     os.path.join(BASE_DIR, 'Macro', 'templates')] 
+    if IS_OFFLINE else 
+    [os.path.join(BASE_DIR, 'Macro', 'templates')],
+
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -68,7 +77,6 @@ TEMPLATES = [
         },
     },
 ]
-
 WSGI_APPLICATION = 'MacroFile.wsgi.application'
 
 
@@ -154,4 +162,5 @@ CACHES = {
     }
 }
 
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 

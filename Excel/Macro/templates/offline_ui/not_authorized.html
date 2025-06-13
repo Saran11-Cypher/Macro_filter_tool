@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --violet-primary: #5052b5;
+            --violet-secondary: #6264c7;
+            --violet-dark: #3e40a3;
+            --violet-light: #8a8cc9;
+            --violet-gradient: linear-gradient(135deg, #5052b5 0%, #3e40a3 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--violet-gradient);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated background particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .particle:nth-child(1) { width: 80px; height: 80px; left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { width: 120px; height: 120px; left: 70%; animation-delay: 1s; }
+        .particle:nth-child(3) { width: 60px; height: 60px; left: 40%; animation-delay: 2s; }
+        .particle:nth-child(4) { width: 100px; height: 100px; left: 80%; animation-delay: 3s; }
+        .particle:nth-child(5) { width: 140px; height: 140px; left: 20%; animation-delay: 4s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-100px) rotate(180deg); }
+        }
+
+        /* Main container */
+        .main-container {
+            position: relative;
+            z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .access-denied-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 100%;
+            padding: 60px 40px;
+            text-align: center;
+            animation: slideInUp 0.8s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .access-denied-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--violet-gradient);
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: var(--violet-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            animation: pulse 2s infinite;
+        }
+
+        .error-icon i {
+            font-size: 3.5rem;
+            color: white;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(80, 82, 181, 0.4); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(80, 82, 181, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(80, 82, 181, 0); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .error-title {
+            color: var(--violet-dark);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+
+        .error-subtitle {
+            color: #6b7280;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .error-message {
+            color: #9ca3af;
+            font-size: 1rem;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .btn-home {
+            background: var(--violet-gradient);
+            border: none;
+            color: white;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-home::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-home:hover::before {
+            left: 100%;
+        }
+
+        .btn-home:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(80, 82, 181, 0.4);
+            color: white;
+        }
+
+        .btn-home:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .access-denied-card {
+                padding: 40px 30px;
+                margin: 20px;
+            }
+            
+            .error-title {
+                font-size: 2rem;
+            }
+            
+            .error-icon {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .error-icon i {
+                font-size: 3rem;
+            }
+        }
+
+        /* Additional decorative elements */
+        .decoration {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(80, 82, 181, 0.1);
+            animation: rotate 20s linear infinite;
+        }
+
+        .decoration:nth-child(1) {
+            top: -100px;
+            right: -100px;
+        }
+
+        .decoration:nth-child(2) {
+            bottom: -100px;
+            left: -100px;
+            animation-direction: reverse;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background particles -->
+    <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-container">
+        <div class="access-denied-card">
+            <div class="decoration"></div>
+            <div class="decoration"></div>
+            
+            <div class="error-icon">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            
+            <h1 class="error-title">Access Denied</h1>
+            <h2 class="error-subtitle">403 Forbidden</h2>
+            <p class="error-message">
+                Sorry, you don't have permission to access this resource. 
+                Please contact your administrator if you believe this is an error.
+            </p>
+            
+            <a href="/" class="btn-home">
+                <i class="fas fa-home"></i>
+                Return to Home
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            // Parallax effect for particles
+            document.addEventListener('mousemove', function(e) {
+                const particles = document.querySelectorAll('.particle');
+                const x = e.clientX / window.innerWidth;
+                const y = e.clientY / window.innerHeight;
+                
+                particles.forEach((particle, index) => {
+                    const speed = (index + 1) * 0.5;
+                    const xPos = (x * speed * 50) - 25;
+                    const yPos = (y * speed * 50) - 25;
+                    
+                    particle.style.transform = `translate(${xPos}px, ${yPos}px)`;
+                });
+            });
+
+            // Add click ripple effect to button
+            const button = document.querySelector('.btn-home');
+            button.addEventListener('click', function(e) {
+                const ripple = document.createElement('span');
+                const size = 60;
+                const pos = this.getBoundingClientRect();
+                const x = e.clientX - pos.left - size / 2;
+                const y = e.clientY - pos.top - size / 2;
+                
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = x + 'px';
+                ripple.style.top = y + 'px';
+                ripple.classList.add('ripple');
+                
+                this.appendChild(ripple);
+                
+                setTimeout(() => {
+                    ripple.remove();
+                }, 600);
+            });
+
+            // Dynamic background color change
+            let hue = 250;
+            setInterval(() => {
+                hue = (hue + 0.5) % 360;
+                document.documentElement.style.setProperty(
+                    '--violet-gradient', 
+                    `linear-gradient(135deg, hsl(${hue}, 70%, 60%) 0%, hsl(${hue + 30}, 70%, 50%) 100%)`
+                );
+            }, 100);
+        });
+    </script>
+
+    <style>
+        .ripple {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0);
+            animation: ripple-animation 0.6s linear;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to {
+                transform: scale(4);
+                opacity: 0;
+            }
+        }
+    </style>
+</body>
+</html>

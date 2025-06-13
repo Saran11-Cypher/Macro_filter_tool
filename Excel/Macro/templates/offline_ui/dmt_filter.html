@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Approved List</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Animate.css -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+  <!-- Read Excel Files Using Js -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary-violet: #4a1a5c;
+      --secondary-violet: #6b2c7a;
+      --accent-violet: #8e44ad;
+      --light-violet: #a569bd;
+      --dark-violet: #2d1436;
+      --neon-purple: #bf40bf;
+      --neon-cyan: #00ffff;
+      --dark-bg: #1a0d20;
+      --card-bg: #2a1533;
+      --text-primary: #e8d5f0;
+      --text-secondary: #c8a6d4;
+      --success-glow: #00ff88;
+      --warning-glow: #ffa500;
+      --danger-glow: #ff4757;
+      --bs-secondary-color: pink;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Exo 2', sans-serif;
+      background: linear-gradient(135deg, var(--dark-bg) 0%, var(--dark-violet) 50%, var(--primary-violet) 100%);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* Animated background particles */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(191, 64, 191, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(142, 68, 173, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(107, 44, 122, 0.05) 0%, transparent 50%);
+      animation: float 20s ease-in-out infinite;
+      pointer-events: none;
+      z-index: -1;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      33% { transform: translateY(-20px) rotate(120deg); }
+      66% { transform: translateY(10px) rotate(240deg); }
+    }
+    
+    .container {
+      position: relative;
+      z-index: 1;
+    }
+    
+    /* Stylish header */
+    h2, h4, h5 {
+      font-family: 'Orbitron', monospace;
+      font-weight: 700;
+      text-shadow: 0 0 20px rgba(191, 64, 191, 0.5);
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes glow {
+      from { text-shadow: 0 0 20px rgba(191, 64, 191, 0.5); }
+      to { text-shadow: 0 0 30px rgba(191, 64, 191, 0.8), 0 0 40px rgba(142, 68, 173, 0.3); }
+    }
+    
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-violet), var(--accent-violet));
+      padding: 2rem;
+      border-radius: 20px;
+      margin-bottom: 2rem;
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      overflow: hidden;
+      animation: slideInDown 1s ease-out;
+    }
+    
+    .page-header::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transform: rotate(30deg);
+      animation: shimmer 3s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%) rotate(30deg); }
+      100% { transform: translateX(200%) rotate(30deg); }
+    }
+    
+    /* Enhanced cards */
+    .card {
+      background: rgba(42, 21, 51, 0.9);
+      border: 1px solid rgba(191, 64, 191, 0.2);
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(191, 64, 191, 0.1);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+      animation: fadeInUp 0.8s ease-out;
+    }
+    
+    .card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(191, 64, 191, 0.1), transparent);
+      transition: left 0.5s;
+    }
+    
+    .card:hover::before {
+      left: 100%;
+    }
+    
+    .card:hover {
+      transform: translateY(-10px) scale(1.02);
+      box-shadow: 
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 40px rgba(191, 64, 191, 0.3);
+      border-color: rgba(191, 64, 191, 0.5);
+    }
+    
+    /* Animated stats cards */
+    .stats-card {
+      animation: fadeInUp 0.8s ease-out;
+      animation-fill-mode: both;
+    }
+    
+    .stats-card:nth-child(1) { animation-delay: 0.1s; }
+    .stats-card:nth-child(2) { animation-delay: 0.2s; }
+    .stats-card:nth-child(3) { animation-delay: 0.3s; }
+    
+    .stats-number {
+      font-family: 'Orbitron', monospace;
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(45deg, var(--neon-purple), var(--neon-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: numberPulse 2s infinite;
+    }
+    
+    @keyframes numberPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    /* Enhanced buttons */
+    .btn {
+      border-radius: 15px;
+      padding: 0.8rem 2rem;
+      font-weight: 600;
+      font-family: 'Exo 2', sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+      overflow: hidden;
+      border: 2px solid transparent;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(45deg, var(--accent-violet), var(--neon-purple));
+      box-shadow: 0 10px 30px rgba(191, 64, 191, 0.3);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 40px rgba(191, 64, 191, 0.5);
+      background: linear-gradient(45deg, var(--neon-purple), var(--accent-violet));
+    }
+    
+    .btn-outline-primary {
+      border-color: var(--neon-purple);
+      color: var(--neon-purple);
+      background: transparent;
+    }
+    
+    .btn-outline-primary:hover {
+      background: var(--neon-purple);
+      color: white;
+      box-shadow: 0 0 30px rgba(191, 64, 191, 0.6);
+    }
+    
+    .btn-outline-danger {
+      border-color: var(--danger-glow);
+      color: var(--danger-glow);
+    }
+    
+    .btn-outline-danger:hover {
+      background: var(--danger-glow);
+      color: white;
+      box-shadow: 0 0 30px rgba(255, 71, 87, 0.6);
+    }
+    
+    .btn-outline-secondary {
+      border-color: var(--text-secondary);
+      color: var(--text-secondary);
+    }
+    
+    .btn-outline-secondary:hover {
+      background: var(--text-secondary);
+      color: var(--dark-bg);
+    }
+    
+    /* Enhanced table */
+    .table-container {
+      background: rgba(42, 21, 51, 0.95);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(191, 64, 191, 0.2);
+    }
+    
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text-primary);
+      margin-bottom: 0;
+      table-layout: fixed;
+    }
+    
+    .table thead {
+      background: linear-gradient(135deg, var(--primary-violet), var(--secondary-violet));
+    }
+    
+    .table thead th {
+      border: 1px solid #bf40bf;
+      padding: 1rem;
+      font-family: 'Orbitron', monospace;
+      vertical-align: top;
+      font-weight: 600;
+      text-transform: uppercase;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
+      position: relative;
+    }
+    
+    .table tbody tr {
+      border: 1px solid #bf40bf;    
+      transition: all 0.3s ease;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
+    }
+    
+    .table tbody tr:hover {
+      background: rgba(191, 64, 191, 0.1);
+      transform: translateX(5px);
+      box-shadow: 0 5px 15px rgba(191, 64, 191, 0.2);
+    }
+    
+    .table tbody td {
+      border: 1px solid #bf40bf;
+      padding: 1rem;
+      vertical-align: top;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      overflow-wrap: break-word;
+      text-align: left;
+    }
+
+    .table-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    margin-top: 1rem;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #bf40bf transparent;
+    }
+
+    /* Optional: Style the scrollbar for WebKit browsers */
+    .table-scroll::-webkit-scrollbar {
+    height: 8px;
+    }
+
+    .table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+    }
+
+    .table-scroll::-webkit-scrollbar-thumb {
+    background-color: #bf40bf;
+    border-radius: 10px;
+    }
+
+    /* Card headers */
+    .card-header {
+      background: linear-gradient(135deg, var(--primary-violet), var(--secondary-violet)) !important;
+      border: none;
+      padding: 1.2rem;
+      font-family: 'Orbitron', monospace;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* Progress bars */
+    .progress {
+      height: 15px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    
+    .progress-bar {
+      background: linear-gradient(45deg, var(--neon-purple), var(--neon-cyan));
+      border-radius: 10px;
+      animation: progressGlow 2s infinite;
+    }
+    
+    @keyframes progressGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(191, 64, 191, 0.5); }
+      50% { box-shadow: 0 0 30px rgba(191, 64, 191, 0.8); }
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 10px;
+      animation: statusPulse 2s infinite;
+    }
+    
+    @keyframes statusPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.7; }
+    }
+    
+    .status-success {
+      background: var(--success-glow);
+      box-shadow: 0 0 10px var(--success-glow);
+    }
+    
+    .status-processing {
+      background: var(--warning-glow);
+      box-shadow: 0 0 10px var(--warning-glow);
+    }
+    
+    /* Alerts */
+    .alert {
+      border-radius: 15px;
+      border: none;
+      backdrop-filter: blur(10px);
+    }
+    
+    .alert-warning {
+      background: rgba(255, 165, 0, 0.2);
+      color: var(--warning-glow);
+      border: 1px solid rgba(255, 165, 0, 0.3);
+    }
+    
+    /* Toast styling */
+    .toast {
+      border-radius: 15px;
+      backdrop-filter: blur(15px);
+    }
+    
+    /* Animations */
+    @keyframes slideInDown {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideInLeft {
+      from {
+        transform: translateX(-30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    /* Responsive animations */
+    .animate-on-scroll {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    
+    .animate-on-scroll.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: var(--dark-bg);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(45deg, var(--accent-violet), var(--neon-purple));
+      border-radius: 6px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(45deg, var(--neon-purple), var(--accent-violet));
+    }
+
+    .neon-button {
+      background: linear-gradient(90deg, #8e2de2, #4a00e0);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-weight: bold;
+      font-size: 1rem;
+      border-radius: 50px;
+      text-transform: uppercase;
+      box-shadow: 0 0 12px rgba(142, 45, 226, 0.75), 0 0 24px rgba(74, 0, 224, 0.45);
+      transition: all 0.3s ease-in-out;
+      text-decoration: none;
+      display: inline-block;
+}
+  .neon-button:hover {
+    box-shadow: 0 0 20px rgba(142, 45, 226, 1), 0 0 40px rgba(74, 0, 224, 0.8);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  </style>
+</head>
+<body>
+<!-- Page Header -->
+<div class="container mt-4">
+  <div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+      <div class="pe-3">
+        <h2 class="mb-1">
+          <i class="fas fa-filter me-2"></i>
+          DMT Filtration Results
+        </h2>
+        <p class="mb-0 text-light opacity-75">
+          Advanced Data Management & Filtration System
+        </p>
+      </div>
+      <div class="d-flex gap-3">
+        <a href="{% url 'dashboard' %}" class="btn neon-button">
+          <i class="fas fa-home me-2"></i> Go to Dashboard
+        </a>
+        <a href="{% url 'upload_excel' %}" class="btn neon-button">
+          <i class="fas fa-upload me-2"></i> Go to Uploads
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-info mt-3" role="alert">
+  ⏱ <strong>Time taken for filtration:</strong> {{ filtration_time }}
+</div>
+
+
+  <!-- Summary Cards Section -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-4">
+      <div class="card stats-card shadow-lg">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-database fa-2x text-info"></i>
+          </div>
+          <h6 class="card-subtitle mb-3 text-muted text-uppercase">Total Records</h6>
+          <div class="stats-number" id="totalCount">{{ total_count|default:"0" }}</div>
+          <div class="progress mt-3">
+            <div class="progress-bar" style="width: 100%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card stats-card shadow-lg">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-check-circle fa-2x text-success"></i>
+          </div>
+          <h6 class="card-subtitle mb-3 text-muted text-uppercase">Approved</h6>
+          <div class="stats-number" id="approvedCount">{{ approved_count|default:"0" }}</div>
+          <div class="progress mt-3">
+          <div class="progress-bar bg-success" style="width: {{ approved_percent|default:0|floatformat:0 }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card stats-card shadow-lg">
+        <div class="card-body text-center p-4">
+          <div class="mb-3">
+            <i class="fas fa-clock fa-2x text-warning"></i>
+          </div>
+          <h6 class="card-subtitle mb-3 text-muted text-uppercase">Pending</h6>
+          <div class="stats-number" id="pendingCount">{{ pending_count|default:"0" }}</div>
+          <div class="progress mt-3">
+            <div class="progress-bar bg-warning" style="width: {{ pending_percent|default:0|floatformat:0 }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtered Records Tables -->
+  <div class="animate-on-scroll">
+    <h4 class="mb-4">
+      <i class="fas fa-table me-3"></i>
+      Filtered Records
+    </h4>
+        <div class="row g-4">
+        <!-- Replace the tables section with: -->
+        {% if download_ready %}
+        {% for sheet, table_html in tables_html.items %}
+              <div class="table-container">
+    <h3>{{ sheet }}</h3>
+    <div class="table-scroll">
+        {{ table_html|safe }}
+    </div>
+  </div>
+
+        {% endfor %}
+        {% else %}
+        <div class="no-data">
+            <p>No filtered file available yet.</p>
+            <div class="loading"></div>
+        </div>
+        {% endif %}
+
+  <!-- Configuration Management -->
+  <div class="card shadow-lg mt-5 animate-on-scroll">
+    <div class="card-body p-4">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h5 class="card-title mb-3">
+            <i class="fas fa-cog me-2"></i>
+            Configuration Management
+          </h5>
+          <p class="card-text text-muted mb-3">
+            Manage configuration folders generated during this filtration process. 
+            These contain temporary processing data and system configurations.
+          </p>
+        </div>
+        <div class="col-md-4 text-end">
+          <div class="d-flex gap-2 justify-content-end">
+            <button class="btn btn-outline-danger" onclick="deleteConfigFolders()">
+              <i class="fas fa-trash me-2"></i>
+              Delete Configs
+            </button>
+            <button class="btn btn-outline-secondary">
+              <i class="fas fa-save me-2"></i>
+              Keep Configs
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="progress mt-4 d-none" id="deleteProgress">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%">
+          <i class="fas fa-spinner fa-spin me-2"></i>
+          Processing deletion...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div id="toastSuccess" class="toast align-items-center text-white bg-success border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">
+          <i class="fas fa-check-circle me-2"></i>
+          Config folders deleted successfully.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+    <div id="toastError" class="toast align-items-center text-white bg-danger border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Failed to delete config folders.
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Animate elements on scroll
+  function animateOnScroll() {
+    const elements = document.querySelectorAll('.animate-on-scroll');
+    elements.forEach(el => {
+      const elementTop = el.getBoundingClientRect().top;
+      const elementVisible = 150;
+      
+      if (elementTop < window.innerHeight - elementVisible) {
+        el.classList.add('visible');
+      }
+    });
+  }
+
+  // Initialize animations
+  window.addEventListener('scroll', animateOnScroll);
+  window.addEventListener('load', animateOnScroll);
+
+  // Enhanced delete function with animations
+  function deleteConfigFolders() {
+    const progressEl = document.getElementById('deleteProgress');
+    const button = event.target.closest('button');
+    
+    // Animate button
+    button.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      button.style.transform = 'scale(1)';
+    }, 150);
+    
+    // Show progress with animation
+    progressEl.classList.remove('d-none');
+    progressEl.style.opacity = '0';
+    progressEl.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+      progressEl.style.transition = 'all 0.5s ease';
+      progressEl.style.opacity = '1';
+      progressEl.style.transform = 'translateY(0)';
+    }, 100);
+
+    // Simulate API call
+    setTimeout(() => {
+      progressEl.classList.add('d-none');
+      
+      // Show success toast
+      const toastEl = document.getElementById('toastSuccess');
+      const toast = new bootstrap.Toast(toastEl, {
+        autohide: true,
+        delay: 4000
+      });
+      toast.show();
+      
+      // Add success animation to button
+      button.innerHTML = '<i class="fas fa-check me-2"></i>Deleted Successfully';
+      button.classList.remove('btn-outline-danger');
+      button.classList.add('btn-outline-success');
+      button.disabled = true;
+      
+    }, 2000);
+  }
+
+  // Add pulse animation to important elements
+  document.addEventListener('DOMContentLoaded', function() {
+    const pulseElements = document.querySelectorAll('.pulse');
+    pulseElements.forEach(el => {
+      setInterval(() => {
+        el.style.animation = 'none';
+        setTimeout(() => {
+          el.style.animation = 'pulse 1s ease-in-out';
+        }, 10);
+      }, 3000);
+    });
+  });
+
+  // Add hover effects to table rows
+  document.addEventListener('DOMContentLoaded', function() {
+    const tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(row => {
+      row.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateX(5px)';
+      });
+      
+      row.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateX(0)';
+      });
+    });
+  });
+const excelInput = document.getElementById('excelUpload');
+if (excelInput) {
+  excelInput.addEventListener('change', function (e) {
+    const reader = new FileReader();
+
+    reader.onload = function (e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      updateCounts(json);
+    };
+
+    reader.readAsArrayBuffer(e.target.files[0]);
+  });
+}
+</script>
+</body>
+</html>
