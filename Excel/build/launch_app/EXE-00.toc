@@ -207,7 +207,7 @@
  [],
  False,
  False,
- 1749817033,
+ 1750085595,
  [('run.exe',
    'E:\\PYTHON\\Django\\Workspace\\Macro_updated\\env\\Lib\\site-packages\\PyInstaller\\bootloader\\Windows-64bit-intel\\run.exe',
    'EXECUTABLE')],

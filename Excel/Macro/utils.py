@@ -63,13 +63,19 @@ def categorize_files(folder_path):
     return single_version_files, multi_version_files
 
 def find_matching_file(config_name, single_version_files, multi_version_files, selected_version):
-    if "&" in config_name:
-        config_name = config_name.replace("&", "and")
+    # 🔁 In-place decoding replacements
+    replacements = {
+        "&": "and",
+        "%": "perc",
+        "$": "dollar",
+    }
+
+    for symbol, replacement in replacements.items():
+        config_name = config_name.replace(symbol, replacement)
+
     normalized_key = normalize_text(config_name)
-    # print(f"🔍 Looking for matches for: {normalized_key} | Version: {selected_version}")
 
     if normalized_key in single_version_files:
-        #print(f"✅ Single-version match found: {single_version_files[normalized_key][0]}")
         return [single_version_files[normalized_key][0]]
 
     elif normalized_key in multi_version_files:
@@ -86,11 +92,21 @@ def find_matching_file(config_name, single_version_files, multi_version_files, s
         else:
             print(f"✅ All versions selected: {[f for f, _ in dated]}")
             return [f for f, _ in dated]
-    
+
     print("❌ No match found.")
     return []
 
+
 def safe_copy(src, tgt, max_retries=3):
+    if not os.path.exists(src):
+        print(f"❌ Source file missing: {src}")
+        raise FileNotFoundError(f"Source file missing: {src}")
+
+    # ✅ Convert to long path format for Windows
+    if os.name == 'nt':
+        src = f"\\\\?\\{os.path.abspath(src)}"
+        tgt = f"\\\\?\\{os.path.abspath(tgt)}"
+
     for attempt in range(max_retries):
         try:
             if not os.path.exists(tgt):
@@ -104,6 +120,8 @@ def safe_copy(src, tgt, max_retries=3):
                 time.sleep(0.5)
             else:
                 raise e
+
+
 
 def process_hrl_files(excel_path, upload_folder, version_choice, file_id, progress_callback=None):
     try:
