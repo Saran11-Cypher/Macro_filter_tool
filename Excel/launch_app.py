@@ -16,7 +16,7 @@ def open_chrome():
 if __name__ == "__main__":
     os.environ["OFFLINE_MODE"] = "1"
 
-    venv_python = r"E:\PYTHON\Django\Workspace\Macro_updated\env\Scripts\python.exe"
+    venv_python = r"C:\Django\Updated_Workspace\.venv\Scripts\python.exe"
 
     if not os.path.exists(venv_python):
         print("❌ Cannot find virtual environment Python at:", venv_python)
